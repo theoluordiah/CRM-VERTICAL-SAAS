@@ -1,0 +1,668 @@
+================================================================================
+CRM360 BACKEND API SPECIFICATION
+================================================================================
+Authentication: JWT + OAuth (not included - handle separately)
+Base URL: /api/v1
+Content-Type: application/json
+Authorization: Bearer <jwt_token>
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. Users & Profiles
+2. Roles & Access Control
+4. Contacts
+5. Companies
+6. Deals & Pipeline
+7. Pipeline Stages
+8. Tasks & Calendar
+9. Activities
+10. Inbox & Messages
+11. Documents
+12. Notifications
+13. Email Templates
+14. Analytics & Reports
+15. Audit Log
+
+================================================================================
+1. USERS & PROFILES
+================================================================================
+
+GET    /api/v1/users/me
+       - Returns current user profile
+       - Response: { id, email, display_name, avatar_url, created_at }
+
+PATCH  /api/v1/users/me
+       - Update current user profile
+       - Body: { display_name?, avatar_url? }
+       - Response: Updated profile
+
+GET    /api/v1/users
+       - List all users (admin only)
+       - Query: page, limit, search
+       - Response: { users: [...], total, page, limit }
+
+GET    /api/v1/users/:id
+       - Get user by ID
+       - Response: { id, email, display_name, avatar_url, role, created_at }
+
+POST   /api/v1/users
+       - Create user (admin only)
+       - Body: { email, display_name, role }
+       - Response: Created user
+
+DELETE /api/v1/users/:id
+       - Deactivate user (admin only)
+       - Response: { success: true }
+
+================================================================================
+2. ROLES & ACCESS CONTROL
+================================================================================
+
+GET    /api/v1/roles
+       - List all available roles
+       - Response: { roles: ["admin", "sales_manager", "sales_rep", "viewer"] }
+
+GET    /api/v1/users/:id/role
+       - Get user's role
+       - Response: { user_id, role: "admin" | "sales_manager" | "sales_rep" | "viewer" }
+
+POST   /api/v1/users/:id/role
+       - Assign role to user (admin only)
+       - Body: { role: "admin" | "sales_manager" | "sales_rep" | "viewer" }
+       - Response: { user_id, role, assigned_at }
+
+DELETE /api/v1/users/:id/role
+       - Remove role from user (admin only)
+       - Response: { success: true }
+
+PERMISSIONS MATRIX:
++-------------------+--------+---------------+-----------+--------+
+| Action            | Admin  | Sales Manager | Sales Rep | Viewer |
++-------------------+--------+---------------+-----------+--------+
+| View all data     |   ✓    |       ✓       |     ✓     |   ✓    |
+| Create records    |   ✓    |       ✓       |     ✓     |   ✗    |
+| Edit own records  |   ✓    |       ✓       |     ✓     |   ✗    |
+| Edit all records  |   ✓    |       ✓       |     ✗     |   ✗    |
+| Delete records    |   ✓    |       ✓       |   own      |   ✗   |
+| Manage users      |   ✓    |       ✗       |     ✗     |   ✗    |
+| Manage roles      |   ✓    |       ✗       |     ✗     |   ✗    |
+| View analytics    |   ✓    |       ✓       |     ✗     |   ✗    |
+| Manage settings   |   ✓    |       ✗       |     ✗     |   ✗    |
++-------------------+--------+---------------+-----------+--------+
+
+
+
+================================================================================
+4. CONTACTS
+================================================================================
+
+GET    /api/v1/contacts
+       - List contacts
+       - Query: page, limit, search, company_id, owner_id, temperature, tags
+       - Response: { contacts: [...], total, page, limit }
+
+GET    /api/v1/contacts/:id
+       - Get contact by ID
+       - Response: Contact object with company details
+
+POST   /api/v1/contacts
+       - Create contact
+       - Body: {
+           first_name, last_name, email?, phone?, role_title?,
+           company_id?, temperature?, tags?
+         }
+       - Response: Created contact
+
+PATCH  /api/v1/contacts/:id
+       - Update contact
+       - Body: { first_name?, last_name?, email?, phone?, role_title?, company_id?, temperature?, tags?, last_contacted_at? }
+       - Response: Updated contact
+
+DELETE /api/v1/contacts/:id
+       - Delete contact
+       - Response: { success: true }
+
+GET    /api/v1/contacts/:id/activities
+       - Get contact activity history
+       - Response: { activities: [...] }
+
+GET    /api/v1/contacts/:id/deals
+       - Get contact's deals
+       - Response: { deals: [...] }
+
+GET    /api/v1/contacts/:id/tasks
+       - Get contact's tasks
+       - Response: { tasks: [...] }
+
+GET    /api/v1/contacts/:id/documents
+       - Get contact's documents
+       - Response: { documents: [...] }
+
+POST   /api/v1/contacts/bulk-import
+       - Bulk import contacts
+       - Body: { contacts: [...] }
+       - Response: { imported: count, errors: [...] }
+
+TEMPERATURES: hot, warm, cold
+
+================================================================================
+5. COMPANIES
+================================================================================
+
+GET    /api/v1/companies
+       - List companies
+       - Query: page, limit, search, industry, owner_id
+       - Response: { companies: [...], total, page, limit }
+
+GET    /api/v1/companies/:id
+       - Get company by ID
+       - Response: Company object
+
+POST   /api/v1/companies
+       - Create company
+       - Body: {  name?,
+           industry?,
+           website?,
+           notes?,
+           owner_id?,
+           contact_person?,
+           email?,
+           phone?, 
+           address?   }
+       - Response: Created company
+
+PATCH  /api/v1/companies/:id
+       - Update company
+       - Body: {  name?,
+           industry?,
+           website?,
+           notes?,
+           owner_id?,
+           contact_person?,
+           email?,
+           phone?, 
+           address?  }
+       - Response: Updated company
+
+DELETE /api/v1/companies/:id
+       - Delete company
+       - Response: { success: true }
+
+
+
+================================================================================
+6. DEALS & PIPELINE
+================================================================================
+
+GET    /api/v1/deals
+       - List deals
+       - Query: page, limit, search, stage_id, owner_id, company_id, contact_id
+       - Response: { deals: [...], total, page, limit }
+
+GET    /api/v1/deals/:id
+       - Get deal by ID
+       - Response: Deal object with company, contact, stage
+
+POST   /api/v1/deals
+       - Create deal
+       - Body: {
+           title, value?, currency?, expected_close_date?,
+           stage_id?, source?, industry?,
+           company_id?, contact_id?
+         }
+       - Response: Created deal
+
+PATCH  /api/v1/deals/:id
+       - Update deal
+       - Body: { title?, value?, currency?, expected_close_date?, stage_id?, source?, industry?, owner_id? }
+       - Response: Updated deal
+
+DELETE /api/v1/deals/:id
+       - Delete deal
+       - Response: { success: true }
+
+POST   /api/v1/deals/:id/stage
+       - Update deal stage (triggers activity log)
+       - Body: { stage_id }
+       - Response: Updated deal + activity logged
+
+POST   /api/v1/deals/:id/assign
+       - Assign deal to user
+       - Body: { owner_id }
+       - Response: Updated deal
+
+GET    /api/v1/deals/:id/activities
+       - Get deal activity history
+       - Response: { activities: [...] }
+
+GET    /api/v1/deals/:id/timeline
+       - Get deal timeline (activities, tasks, notes)
+       - Response: { timeline: [...] }
+
+POST   /api/v1/deals/bulk-import
+       - Bulk import deals
+       - Body: { deals: [...] }
+       - Response: { imported: count, errors: [...] }
+
+================================================================================
+7. PIPELINE STAGES
+================================================================================
+
+GET    /api/v1/pipeline-stages
+       - List pipeline stages
+       - Query: include_counts
+       - Response: { stages: [...] }
+
+GET    /api/v1/pipeline-stages/:id
+       - Get stage by ID
+       - Response: Stage object
+
+POST   /api/v1/pipeline-stages
+       - Create stage (admin only)
+       - Body: { name, position, is_won?, is_lost? }
+       - Response: Created stage
+
+PATCH  /api/v1/pipeline-stages/:id
+       - Update stage (admin only)
+       - Body: { name?, position?, is_won?, is_lost? }
+       - Response: Updated stage
+
+DELETE /api/v1/pipeline-stages/:id
+       - Delete stage (admin only)
+       - Response: { success: true }
+
+POST   /api/v1/pipeline-stages/reorder
+       - Reorder stages (admin only)
+       - Body: { stages: [{ id, position }] }
+       - Response: { success: true }
+
+================================================================================
+8. TASKS & CALENDAR
+================================================================================
+
+GET    /api/v1/tasks
+       - List tasks
+       - Query: page, limit, status, type, priority, owner_id, due_date_from, due_date_to, contact_id, deal_id, company_id
+       - Response: { tasks: [...], total, page, limit }
+
+GET    /api/v1/tasks/:id
+       - Get task by ID
+       - Response: Task object
+
+POST   /api/v1/tasks
+       - Create task
+       - Body: {
+           title, type, priority, status?,
+           description?, due_at?, duration_minutes?,
+           location?, meeting_url?,
+           contact_id?, deal_id?, company_id?,
+           assignees?: [user_ids]
+         }
+       - Response: Created task
+
+PATCH  /api/v1/tasks/:id
+       - Update task
+       - Body: { title?, type?, priority?, status?, description?, due_at?, duration_minutes?, location?, meeting_url?, owner_id? }
+       - Response: Updated task
+
+DELETE /api/v1/tasks/:id
+       - Delete task
+       - Response: { success: true }
+
+POST   /api/v1/tasks/:id/complete
+       - Mark task as completed
+       - Response: Updated task
+
+POST   /api/v1/tasks/:id/assign
+       - Assign task to users
+       - Body: { assignees: [user_ids] }
+       - Response: Updated task
+
+GET    /api/v1/tasks/calendar
+       - Get tasks for calendar view
+       - Query: start_date, end_date, owner_id
+       - Response: { tasks: [...] }
+
+GET    /api/v1/tasks/upcoming
+       - Get upcoming tasks for current user
+       - Query: days (default 7)
+       - Response: { tasks: [...] }
+
+GET    /api/v1/tasks/overdue
+       - Get overdue tasks
+       - Response: { tasks: [...] }
+
+TYPES: task, meeting, call, follow_up
+PRIORITIES: low, medium, high, urgent
+STATUSES: pending, in_progress, completed, cancelled
+
+================================================================================
+9. ACTIVITIES
+================================================================================
+
+GET    /api/v1/activities
+       - List activities
+       - Query: page, limit, user_id, contact_id, deal_id, type, date_from, date_to
+       - Response: { activities: [...], total, page, limit }
+
+GET    /api/v1/activities/:id
+       - Get activity by ID
+       - Response: Activity object
+
+POST   /api/v1/activities
+       - Log activity
+       - Body: {
+           type, content?,
+           contact_id?, deal_id?,
+           metadata?
+         }
+       - Response: Created activity
+
+DELETE /api/v1/activities/:id
+       - Delete activity
+       - Response: { success: true }
+
+GET    /api/v1/activities/feed
+       - Get activity feed
+       - Query: page, limit, entity_type?, entity_id?
+       - Response: { activities: [...] }
+
+TYPES: email, call, meeting, note, stage_change, task_completed, created, updated, deleted
+
+================================================================================
+10. INBOX & MESSAGES
+================================================================================
+
+GET    /api/v1/inbox
+       - List messages
+       - Query: page, limit, channel, read, contact_id, lead_id, date_from, date_to
+       - Response: { messages: [...], total, page, limit, unread_count }
+
+GET    /api/v1/inbox/:id
+       - Get message by ID
+       - Response: Message object
+
+POST   /api/v1/inbox/:id/read
+       - Mark message as read
+       - Response: Updated message
+
+POST   /api/v1/inbox/read-all
+       - Mark all messages as read
+       - Response: { success: true }
+
+DELETE /api/v1/inbox/:id
+       - Delete message
+       - Response: { success: true }
+
+POST   /api/v1/inbox/send
+       - Send message
+       - Body: {
+           channel, subject?, body,
+           contact_id?, lead_id?,
+           sender_handle?, sender_name?
+         }
+       - Response: Sent message
+
+GET    /api/v1/inbox/channels
+       - Get available channels
+       - Response: { channels: [...] }
+
+CHANNELS: email, whatsapp, sms, telegram, instagram, facebook, twitter, linkedin
+
+================================================================================
+11. DOCUMENTS
+================================================================================
+
+GET    /api/v1/documents
+       - List documents
+       - Query: page, limit, contact_id, deal_id, company_id
+       - Response: { documents: [...], total, page, limit }
+
+GET    /api/v1/documents/:id
+       - Get document metadata
+       - Response: Document object
+
+POST   /api/v1/documents
+       - Upload document
+       - Body: {
+           name, mime_type, size_bytes,
+           contact_id?, deal_id?, company_id?
+         }
+       - Returns: { upload_url, document }
+       - Note: Use upload_url to upload file to storage
+
+GET    /api/v1/documents/:id/download
+       - Get download URL
+       - Response: { download_url }
+
+DELETE /api/v1/documents/:id
+       - Delete document
+       - Response: { success: true }
+
+================================================================================
+12. NOTIFICATIONS
+================================================================================
+
+GET    /api/v1/notifications
+       - List notifications
+       - Query: page, limit, unread_only, type
+       - Response: { notifications: [...], total, page, limit, unread_count }
+
+GET    /api/v1/notifications/:id
+       - Get notification by ID
+       - Response: Notification object
+
+POST   /api/v1/notifications/:id/read
+       - Mark notification as read
+       - Response: Updated notification
+
+POST   /api/v1/notifications/read-all
+       - Mark all as read
+       - Response: { success: true }
+
+DELETE /api/v1/notifications/:id
+       - Delete notification
+       - Response: { success: true }
+
+POST   /api/v1/notifications
+       - Create notification (internal/system)
+       - Body: {
+           user_id, title, body, type,
+           link?, metadata?
+         }
+       - Response: Created notification
+
+TYPES: task_assigned, task_due, deal_stage, lead_new, message_new, mention, system
+
+================================================================================
+13. EMAIL TEMPLATES
+================================================================================
+
+GET    /api/v1/email-templates
+       - List email templates
+       - Query: page, limit, search, tone
+       - Response: { templates: [...], total, page, limit }
+
+GET    /api/v1/email-templates/:id
+       - Get template by ID
+       - Response: Template object
+
+POST   /api/v1/email-templates
+       - Create template
+       - Body: { name, subject?, body, tone? }
+       - Response: Created template
+
+PATCH  /api/v1/email-templates/:id
+       - Update template
+       - Body: { name?, subject?, body?, tone? }
+       - Response: Updated template
+
+DELETE /api/v1/email-templates/:id
+       - Delete template
+       - Response: { success: true }
+
+================================================================================
+14. ANALYTICS & REPORTS
+================================================================================
+
+GET    /api/v1/analytics/overview
+       - Get dashboard overview
+       - Response: {
+           open_deals: count,
+           revenue_forecast: number,
+           total_contacts: count,
+           emails_sent: count,
+           deals_by_stage: [...],
+           deals_by_source: [...],
+           conversion_rate: number,
+           avg_deal_value: number
+         }
+
+GET    /api/v1/analytics/pipeline
+       - Pipeline analytics
+       - Query: date_from?, date_to?
+       - Response: {
+           stages: [{ id, name, count, value, avg_time_in_stage }],
+           total_value: number,
+           won_value: number,
+           lost_value: number
+         }
+
+GET    /api/v1/analytics/leads
+       - Lead analytics
+       - Query: date_from?, date_to?
+       - Response: {
+           total: count,
+           by_status: [...],
+           by_source: [...],
+           by_channel: [...],
+           conversion_rate: number
+         }
+
+GET    /api/v1/analytics/activities
+       - Activity analytics
+       - Query: date_from?, date_to?, user_id?
+       - Response: {
+           by_type: [...],
+           by_user: [...],
+           trend: [...]
+         }
+
+GET    /api/v1/analytics/tasks
+       - Task analytics
+       - Query: date_from?, date_to?
+       - Response: {
+           total: count,
+           completed: count,
+           overdue: count,
+           by_priority: [...],
+           completion_rate: number
+         }
+
+GET    /api/v1/reports/deals
+       - Deals report
+       - Query: date_from?, date_to?, group_by (day|week|month)
+       - Response: { data: [...] }
+
+GET    /api/v1/reports/revenue
+       - Revenue report
+       - Query: date_from?, date_to?, group_by
+       - Response: { data: [...] }
+
+GET    /api/v1/reports/performance
+       - Sales performance report
+       - Query: date_from?, date_to?, user_id?
+       - Response: {
+           users: [{ user_id, name, deals_count, deals_value, tasks_completed }]
+         }
+
+================================================================================
+15. AUDIT LOG
+================================================================================
+
+GET    /api/v1/audit-logs
+       - List audit logs (admin only)
+       - Query: page, limit, user_id, entity_type, entity_id, action, date_from, date_to
+       - Response: { logs: [...], total, page, limit }
+
+GET    /api/v1/audit-logs/:id
+       - Get audit log by ID
+       - Response: Log object
+
+ACTIONS: created, updated, deleted, login, logout, view, export
+
+================================================================================
+COMMON RESPONSE FORMATS
+================================================================================
+
+SUCCESS:
+{
+  "success": true,
+  "data": { ... }
+}
+
+PAGINATED:
+{
+  "success": true,
+  "data": [...],
+  "total": 100,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 5
+}
+
+ERROR:
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid email format",
+    "details": [...]
+  }
+}
+
+AUTH ERROR:
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Invalid or expired token"
+  }
+}
+
+FORBIDDEN:
+{
+  "success": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to perform this action"
+  }
+}
+
+NOT FOUND:
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Resource not found"
+  }
+}
+
+================================================================================
+WEBSOCKET EVENTS (Optional for real-time)
+================================================================================
+
+CHANNELS:
+- notifications:{user_id}
+- activities:{organization_id}
+- inbox:{organization_id}
+
+EVENTS:
+- notification:created
+- activity:created
+- deal:stage_changed
+- task:assigned
+- message:received
+
+================================================================================

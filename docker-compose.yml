@@ -1,0 +1,66 @@
+services:
+  app:
+    build: .
+    container_name: crm-api
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/crm360
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: crm-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app-dev:
+    image: node:22-alpine
+    container_name: crm-api-dev
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/crm360
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "corepack enable && corepack prepare pnpm@10.15.1 --activate && pnpm install && pnpm dev"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    profiles:
+      - dev
+
+  mongo-dev:
+    image: mongo:7
+    container_name: crm-mongo-dev
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_dev_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - dev
+
+volumes:
+  mongo_data:
+  mongo_dev_data:

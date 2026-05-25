@@ -1,0 +1,338 @@
+import swaggerJsdoc from 'swagger-jsdoc';
+import path from 'path';
+import config from './index';
+
+const swaggerBaseUrl = `http://localhost:${config.PORT}`;
+const routeDocsGlob = path.join(__dirname, '..', 'routes', '*.{ts,js}');
+
+const options: swaggerJsdoc.Options = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'CRM360 API',
+      version: '1.0.0',
+      description: 'Tenant-scoped Customer Relationship Management API. Authenticated resources are scoped to the current user organization.',
+    },
+    servers: [
+      {
+        url: 'https://crm-backend-bju5.onrender.com/api/v1',
+        description: 'Production API v1',
+      },
+      {
+        url: `${swaggerBaseUrl}/api/v1`,
+        description: 'Configured API v1',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        cookieAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'crm_AT',
+          description: 'HttpOnly JWT access token cookie set by auth endpoints',
+        },
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT token via Authorization header (fallback)',
+        },
+      },
+      schemas: {
+        Error: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: false },
+            message: { type: 'string' },
+            errors: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Validation errors when applicable',
+            },
+          },
+        },
+        Organization: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            name: { type: 'string' },
+            slug: { type: 'string' },
+            owner_id: { type: 'string', nullable: true },
+            is_active: { type: 'boolean' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        UserInvitation: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            email: { type: 'string' },
+            display_name: { type: 'string', nullable: true },
+            role: { type: 'string', enum: ['admin', 'sales_manager', 'sales_rep', 'viewer'] },
+            organization_id: { type: 'string' },
+            invited_by: { type: 'string' },
+            expires_at: { type: 'string', format: 'date-time' },
+            accepted_at: { type: 'string', format: 'date-time', nullable: true },
+            revoked_at: { type: 'string', format: 'date-time', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        User: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            email: { type: 'string' },
+            display_name: { type: 'string' },
+            avatar_url: { type: 'string' },
+            role: { type: 'string', enum: ['admin', 'sales_manager', 'sales_rep', 'viewer'] },
+            organization_id: { type: 'string', description: 'Current tenant organization ID' },
+            is_active: { type: 'boolean' },
+            created_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        AuthResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean' },
+            message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                user: { $ref: '#/components/schemas/User' },
+              },
+            },
+          },
+        },
+        ForgotPasswordResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'OTP sent to your email' },
+            data: { type: 'object', example: {} },
+          },
+        },
+        VerifyOTPResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'OTP verified successfully' },
+            data: {
+              type: 'object',
+              properties: {
+                resetToken: { type: 'string', example: '64-character-reset-token' },
+              },
+            },
+          },
+        },
+        ResetPasswordResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Password reset successfully' },
+            data: { type: 'object', example: {} },
+          },
+        },
+        CRMFile: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            original_name: { type: 'string' },
+            stored_name: { type: 'string' },
+            mime_type: { type: 'string' },
+            file_size: { type: 'number' },
+            cloudinary_url: { type: 'string' },
+            cloudinary_public_id: { type: 'string' },
+            organization_id: { type: 'string' },
+            folder_id: { type: 'string', nullable: true },
+            contact_id: { type: 'string', nullable: true },
+            deal_id: { type: 'string', nullable: true },
+            company_id: { type: 'string', nullable: true },
+            owner_id: { type: 'string' },
+            tags: { type: 'array', items: { type: 'string' } },
+            notes: { type: 'string', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        Folder: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            name: { type: 'string' },
+            parent_id: { type: 'string', nullable: true },
+            owner_id: { type: 'string' },
+            organization_id: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        EmailResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean' },
+            message: { type: 'string' },
+            data: {
+              type: 'object',
+              properties: {
+                subject: { type: 'string' },
+                body: { type: 'string' },
+              },
+            },
+          },
+        },
+        EmailMessage: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            user_id: { type: 'string' },
+            organization_id: { type: 'string' },
+            gmail_message_id: { type: 'string' },
+            thread_id: { type: 'string' },
+            from_name: { type: 'string' },
+            from_email: { type: 'string' },
+            to: { type: 'array', items: { type: 'string' } },
+            subject: { type: 'string' },
+            snippet: { type: 'string' },
+            received_at: { type: 'string', format: 'date-time' },
+            is_read: { type: 'boolean' },
+            contact_id: { type: 'string', nullable: true },
+          },
+        },
+        Contact: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            first_name: { type: 'string' },
+            last_name: { type: 'string' },
+            email: { type: 'string' },
+            phone: { type: 'string' },
+            role_title: { type: 'string' },
+            company_id: { type: 'string', nullable: true },
+            owner_id: { type: 'string' },
+            organization_id: { type: 'string' },
+            temperature: { type: 'string', enum: ['hot', 'warm', 'cold'] },
+            tags: { type: 'array', items: { type: 'string' } },
+            last_contacted_at: { type: 'string', format: 'date-time', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        Company: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            name: { type: 'string' },
+            industry: { type: 'string', nullable: true },
+            website: { type: 'string', nullable: true },
+            notes: { type: 'string', nullable: true },
+            owner_id: { type: 'string', nullable: true },
+            organization_id: { type: 'string' },
+            contact_person: { type: 'string', nullable: true },
+            email: { type: 'string', nullable: true },
+            phone: { type: 'string', nullable: true },
+            address: { type: 'string', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        Deal: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            title: { type: 'string' },
+            value: { type: 'number', nullable: true },
+            currency: { type: 'string', example: 'USD' },
+            status: { type: 'string', enum: ['open', 'won', 'lost'] },
+            expected_close_date: { type: 'string', format: 'date-time', nullable: true },
+            stage_id: { type: 'string', nullable: true },
+            source: { type: 'string', nullable: true },
+            industry: { type: 'string', nullable: true },
+            company_id: { type: 'string', nullable: true },
+            contact_id: { type: 'string', nullable: true },
+            owner_id: { type: 'string', nullable: true },
+            organization_id: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        Pipeline: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            name: { type: 'string' },
+            description: { type: 'string', nullable: true },
+            is_default: { type: 'boolean' },
+            organization_id: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        PipelineStage: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            name: { type: 'string' },
+            description: { type: 'string', nullable: true },
+            pipeline_id: { type: 'string' },
+            order: { type: 'number' },
+            is_won: { type: 'boolean' },
+            is_lost: { type: 'boolean' },
+            assignees: { type: 'array', items: { type: 'string' } },
+            organization_id: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        Task: {
+          type: 'object',
+          properties: {
+            _id: { type: 'string' },
+            title: { type: 'string' },
+            type: { type: 'string', enum: ['task', 'meeting', 'call', 'follow_up'] },
+            priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
+            status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'cancelled'] },
+            description: { type: 'string', nullable: true },
+            due_at: { type: 'string', format: 'date-time', nullable: true },
+            duration_minutes: { type: 'number', nullable: true },
+            location: { type: 'string', nullable: true },
+            meeting_url: { type: 'string', nullable: true },
+            contact_id: { type: 'string', nullable: true },
+            deal_id: { type: 'string', nullable: true },
+            company_id: { type: 'string', nullable: true },
+            owner_id: { type: 'string' },
+            organization_id: { type: 'string' },
+            assignees: { type: 'array', items: { type: 'string' } },
+            reminder_sent_at: { type: 'string', format: 'date-time', nullable: true },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        TaskResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: true },
+            message: { type: 'string' },
+            data: { $ref: '#/components/schemas/Task' },
+          },
+        },
+        TaskListResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: true },
+            message: { type: 'string' },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/Task' },
+            },
+          },
+        },
+      },
+    },
+    security: [{ cookieAuth: [] }],
+  },
+  apis: [routeDocsGlob],
+};
+
+export const swaggerSpec = swaggerJsdoc(options);
