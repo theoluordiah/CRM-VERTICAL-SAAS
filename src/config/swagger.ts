@@ -328,6 +328,75 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        DashboardSummaryResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Dashboard summary retrieved successfully' },
+            data: {
+              type: 'object',
+              properties: {
+                cards: {
+                  type: 'object',
+                  properties: {
+                    open_deals: { type: 'integer', example: 1 },
+                    revenue_forecast: { type: 'number', example: 7623426 },
+                    active_contacts: { type: 'integer', example: 12 },
+                    active_companies: { type: 'integer', example: 12 },
+                  },
+                },
+                pipeline_review: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      stage_id: { type: 'string' },
+                      name: { type: 'string', example: 'Qualified' },
+                      order: { type: 'integer', example: 2 },
+                      count: { type: 'integer', example: 1 },
+                      value: { type: 'number', example: 7623426 },
+                      is_won: { type: 'boolean' },
+                      is_lost: { type: 'boolean' },
+                    },
+                  },
+                },
+                recent_contacts: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      first_name: { type: 'string', example: 'John' },
+                      last_name: { type: 'string', example: 'Doe' },
+                      full_name: { type: 'string', example: 'John Doe' },
+                      initials: { type: 'string', example: 'JD' },
+                      role_title: { type: 'string', example: 'CEO' },
+                      temperature: { type: 'string', enum: ['hot', 'warm', 'cold'], example: 'hot' },
+                      company: { type: 'string', nullable: true },
+                      created_at: { type: 'string', format: 'date-time' },
+                    },
+                  },
+                },
+                deal_sources: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      source: { type: 'string', example: 'linkedin' },
+                      count: { type: 'integer', example: 1 },
+                      value: { type: 'number', example: 7623426 },
+                    },
+                  },
+                },
+                totals: { type: 'object' },
+                period: { type: 'object' },
+                pipeline: { type: 'object' },
+                tasks: { type: 'object' },
+                recent_activities: { type: 'array', items: { type: 'object' } },
+              },
+            },
+          },
+        },
       },
     },
     security: [{ cookieAuth: [] }],

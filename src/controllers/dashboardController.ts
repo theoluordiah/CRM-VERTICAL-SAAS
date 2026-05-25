@@ -3,6 +3,7 @@ import { Activity } from '../models/Activity';
 import { Company } from '../models/Company';
 import { Contact } from '../models/Contact';
 import { Deal } from '../models/Deal';
+import { PipelineStage } from '../models/Pipeline';
 import { Task } from '../models/Task';
 import { AuthRequest } from '../types';
 import { requireOrganization } from '../utils/tenant';
@@ -76,7 +77,11 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
       taskStatus,
       overdueTasks,
       dueSoonTasks,
-      recentActivities
+      recentActivities,
+      pipelineStages,
+      pipelineStageDeals,
+      recentContacts,
+      dealSources
     ] = await Promise.all([
       Contact.countDocuments(orgQuery),
       Company.countDocuments(orgQuery),
@@ -108,18 +113,75 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
         .populate('user_id', 'email display_name')
         .sort({ created_at: -1 })
         .limit(10)
-        .lean()
+        .lean(),
+      PipelineStage.find(orgQuery)
+        .sort({ order: 1 })
+        .select('_id name order is_won is_lost')
+        .lean(),
+      Deal.aggregate([
+        { $match: { ...orgQuery, status: 'open' } },
+        { $group: { _id: '$stage_id', count: { $sum: 1 }, value: { $sum: { $ifNull: ['$value', 0] } } } }
+      ]),
+      Contact.find(orgQuery)
+        .populate('company_id', 'name')
+        .sort({ created_at: -1 })
+        .limit(5)
+        .select('first_name last_name role_title temperature company_id created_at')
+        .lean(),
+      Deal.aggregate([
+        { $match: orgQuery },
+        { $group: { _id: { $ifNull: ['$source', 'Unknown'] }, count: { $sum: 1 }, value: { $sum: { $ifNull: ['$value', 0] } } } },
+        { $sort: { count: -1 } }
+      ])
     ]);
 
     const openDeals = dealStatus.find((item) => item._id === 'open');
     const wonDeals = dealStatus.find((item) => item._id === 'won');
     const lostDeals = dealStatus.find((item) => item._id === 'lost');
     const closedDeals = (wonDeals?.count || 0) + (lostDeals?.count || 0);
+    const stageStats = new Map(
+      pipelineStageDeals.map((item) => [String(item._id), { count: item.count, value: item.value }])
+    );
+    const pipelineReview = pipelineStages.map((stage) => {
+      const stats = stageStats.get(String(stage._id)) || { count: 0, value: 0 };
+      return {
+        stage_id: stage._id,
+        name: stage.name,
+        order: stage.order,
+        count: stats.count,
+        value: stats.value,
+        is_won: stage.is_won,
+        is_lost: stage.is_lost
+      };
+    });
 
     res.json({
       status: true,
       message: 'Dashboard summary retrieved successfully',
       data: {
+        cards: {
+          open_deals: openDeals?.count || 0,
+          revenue_forecast: openDeals?.value || 0,
+          active_contacts: totalContacts,
+          active_companies: totalCompanies
+        },
+        pipeline_review: pipelineReview,
+        recent_contacts: recentContacts.map((contact) => ({
+          id: contact._id,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
+          full_name: `${contact.first_name} ${contact.last_name}`.trim(),
+          initials: `${contact.first_name?.[0] || ''}${contact.last_name?.[0] || ''}`.toUpperCase(),
+          role_title: contact.role_title,
+          temperature: contact.temperature,
+          company: (contact.company_id as unknown as { name?: string })?.name,
+          created_at: contact.created_at
+        })),
+        deal_sources: dealSources.map((source) => ({
+          source: source._id,
+          count: source.count,
+          value: source.value
+        })),
         totals: {
           contacts: totalContacts,
           companies: totalCompanies,

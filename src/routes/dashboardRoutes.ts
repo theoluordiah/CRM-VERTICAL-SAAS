@@ -38,6 +38,10 @@ router.use(authenticate);
  *     responses:
  *       200:
  *         description: Dashboard summary retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DashboardSummaryResponse'
  */
 router.get('/summary', getDashboardSummary);
 
