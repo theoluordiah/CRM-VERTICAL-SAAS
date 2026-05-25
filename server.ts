@@ -47,7 +47,7 @@ app.use(cors({
   credentials: true
 }));
 
-if (process.env.NODE_ENV !== 'production') {
+if (config.SWAGGER_ENABLED) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
 
