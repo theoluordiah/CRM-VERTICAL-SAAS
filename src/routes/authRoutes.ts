@@ -139,7 +139,7 @@ router.post('/resend-verification-email', authRateLimit, validateBody({
  * /auth/login:
  *   post:
  *     summary: Login with email and password
- *     description: Sets an HttpOnly crm_AT cookie and returns the tenant-scoped user profile.
+ *     description: Sets an HttpOnly crm_AT cookie and returns the tenant-scoped user profile. If the email is not verified, crm_IV is set to false and the token is still issued so the frontend can redirect to verification.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -155,7 +155,7 @@ router.post('/resend-verification-email', authRateLimit, validateBody({
  *                 type: string
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Login successful. Unverified users also receive this response with crm_IV=false.
  *         content:
  *           application/json:
  *             schema:

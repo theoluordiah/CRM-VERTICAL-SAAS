@@ -89,6 +89,7 @@ const options: swaggerJsdoc.Options = {
             role: { type: 'string', enum: ['admin', 'sales_manager', 'sales_rep', 'viewer'] },
             organization_id: { type: 'string', description: 'Current tenant organization ID' },
             is_active: { type: 'boolean' },
+            is_verified: { type: 'boolean' },
             created_at: { type: 'string', format: 'date-time' },
           },
         },

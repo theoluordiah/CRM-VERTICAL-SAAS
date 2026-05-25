@@ -44,7 +44,7 @@ Register a new user. New users are created as admins and must verify their email
 }
 ```
 
-**Note:** No auth cookie is set until the email is verified.
+**Note:** Signup does not set an access token. Login sets an access token even when the email is not verified, with `crm_IV=false`, so the frontend can redirect the user to email verification.
 
 ---
 
@@ -124,7 +124,7 @@ Handle Google OAuth callback. Redirects to frontend with token.
 ---
 
 #### POST /auth/login
-Login with email and password.
+Login with email and password. The server sets the access token cookie after valid credentials even if the email is not verified. For unverified users, `crm_IV=false` is set and the frontend should redirect to email verification.
 
 **Request Body:**
 ```json
@@ -140,12 +140,12 @@ Login with email and password.
   "status": true,
   "message": "Login successful",
   "data": {
-    "user": { "id", "email", "display_name", "avatar_url", "role", "created_at" }
+    "user": { "id", "email", "display_name", "avatar_url", "role", "organization_id", "is_verified", "created_at" }
   }
 }
 ```
 
-**Note:** Token is set via httpOnly cookie automatically.
+**Note:** Token is set via httpOnly `crm_AT` cookie automatically. Verification state is exposed via `crm_IV`.
 
 ---
 

@@ -48,10 +48,14 @@ const getCookieUser = (user: IUser) => ({
   created_at: user.created_at
 });
 
+const setVerificationCookie = (res: Response, isVerified: boolean): void => {
+  res.cookie(COOKIE_NAMES.IS_VERIFIED, String(isVerified), FRONTEND_COOKIE_OPTIONS);
+};
+
 const setAuthCookies = (res: Response, token: string, user: IUser): void => {
   res.cookie(COOKIE_NAMES.ACCESS_TOKEN, token, COOKIE_OPTIONS);
   res.cookie(COOKIE_NAMES.ACCESS_TOKEN_EXPIRY, String(getTokenExpiry(token)), FRONTEND_COOKIE_OPTIONS);
-  res.cookie(COOKIE_NAMES.IS_VERIFIED, String(user.is_active), FRONTEND_COOKIE_OPTIONS);
+  setVerificationCookie(res, user.is_active);
   res.cookie(COOKIE_NAMES.LOGGED_IN_USER, JSON.stringify(getCookieUser(user)), FRONTEND_COOKIE_OPTIONS);
 };
 
@@ -61,6 +65,7 @@ const clearAuthCookies = (res: Response): void => {
   });
 
   res.clearCookie('token', COOKIE_OPTIONS);
+  res.clearCookie('crm_iv', FRONTEND_COOKIE_OPTIONS);
 };
 
 const getOAuth2Client = () => {
@@ -186,6 +191,8 @@ export const signup = async (req: AuthRequest, res: Response): Promise<void> => 
     await seedDefaultPipelineForOrganization(organization._id as mongoose.Types.ObjectId);
     const verificationEmailSent = await createVerificationOtp(user);
 
+    setVerificationCookie(res, false);
+
     res.status(201).json({
       status: true,
       message: verificationEmailSent
@@ -230,6 +237,7 @@ export const verifyEmail = async (req: AuthRequest, res: Response): Promise<void
     }
 
     if (user.is_active) {
+      setVerificationCookie(res, true);
       res.json({
         status: true,
         message: 'Email already verified',
@@ -245,6 +253,7 @@ export const verifyEmail = async (req: AuthRequest, res: Response): Promise<void
     }).sort({ created_at: -1 });
 
     if (!otpRecord) {
+      setVerificationCookie(res, false);
       res.status(400).json({
         status: false,
         message: 'Invalid or expired OTP'
@@ -255,6 +264,7 @@ export const verifyEmail = async (req: AuthRequest, res: Response): Promise<void
     if (otpRecord.attempts >= 5) {
       otpRecord.used_at = new Date();
       await otpRecord.save();
+      setVerificationCookie(res, false);
       res.status(400).json({
         status: false,
         message: 'Invalid or expired OTP'
@@ -268,6 +278,7 @@ export const verifyEmail = async (req: AuthRequest, res: Response): Promise<void
         otpRecord.used_at = new Date();
       }
       await otpRecord.save();
+      setVerificationCookie(res, false);
       res.status(400).json({
         status: false,
         message: 'Invalid or expired OTP'
@@ -326,6 +337,7 @@ export const resendVerificationEmail = async (req: AuthRequest, res: Response): 
     const user = await User.findOne({ email: normalizedEmail });
 
     if (user?.is_active) {
+      setVerificationCookie(res, true);
       res.status(400).json({
         status: false,
         message: 'Email is already verified'
@@ -334,6 +346,7 @@ export const resendVerificationEmail = async (req: AuthRequest, res: Response): 
     }
 
     if (user) {
+      setVerificationCookie(res, false);
       const verificationEmailSent = await createVerificationOtp(user);
 
       if (!verificationEmailSent) {
@@ -388,14 +401,6 @@ export const login = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
-    if (!user.is_active) {
-      res.status(403).json({
-        status: false,
-        message: 'Please verify your email before logging in'
-      });
-      return;
-    }
-
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
@@ -417,6 +422,26 @@ export const login = async (req: AuthRequest, res: Response): Promise<void> => {
 
     setAuthCookies(res, token, user);
 
+    if (!user.is_active) {
+      res.json({
+        status: true,
+        message: 'Please verify your email before continuing',
+        data: {
+          user: {
+            id: user._id,
+            email: user.email,
+            display_name: user.display_name,
+            avatar_url: user.avatar_url,
+            role: user.role,
+            organization_id: user.organization_id,
+            is_verified: false,
+            created_at: user.created_at
+          }
+        }
+      });
+      return;
+    }
+
     res.json({
       status: true,
       message: 'Login successful',
@@ -428,6 +453,7 @@ export const login = async (req: AuthRequest, res: Response): Promise<void> => {
           avatar_url: user.avatar_url,
           role: user.role,
           organization_id: user.organization_id,
+          is_verified: true,
           created_at: user.created_at
         }
       }
