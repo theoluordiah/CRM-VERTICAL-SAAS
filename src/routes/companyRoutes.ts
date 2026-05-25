@@ -55,7 +55,7 @@ router.use(authenticate);
  *           type: string
  *     responses:
  *       200:
- *         description: Companies retrieved successfully
+ *         description: Companies retrieved successfully. Each company includes stats with contact_count, deal_count, pipeline_value, and won_revenue.
  */
 router.get('/', listCompanies);
 
@@ -99,7 +99,7 @@ router.get('/export', authorize('admin', 'sales_manager'), exportCompanies);
  *           type: string
  *     responses:
  *       200:
- *         description: Company retrieved successfully
+ *         description: Company retrieved successfully with stats containing contact_count, deal_count, pipeline_value, and won_revenue.
  *       404:
  *         description: Company not found
  */
@@ -140,7 +140,7 @@ router.get('/:id', getCompanyById);
  *                 type: string
  *     responses:
  *       201:
- *         description: Company created successfully
+ *         description: Company created successfully with stats containing contact_count, deal_count, pipeline_value, and won_revenue.
  */
 router.post('/', authorize('admin', 'sales_manager', 'sales_rep'), createCompany);
 
@@ -184,7 +184,7 @@ router.post('/', authorize('admin', 'sales_manager', 'sales_rep'), createCompany
  *                 type: string
  *     responses:
  *       200:
- *         description: Company updated successfully
+ *         description: Company updated successfully with stats containing contact_count, deal_count, pipeline_value, and won_revenue.
  */
 router.patch('/:id', authorize('admin', 'sales_manager', 'sales_rep'), updateCompany);
 

@@ -459,13 +459,36 @@ Query parameters:
 {
   "status": true,
   "message": "Companies retrieved successfully",
-  "data": [...],
+  "data": [
+    {
+      "_id": "string",
+      "name": "string",
+      "industry": "string",
+      "website": "string",
+      "email": "string",
+      "phone": "string",
+      "address": "string",
+      "contact_person": "string",
+      "notes": "string",
+      "owner_id": { "email": "string", "display_name": "string" },
+      "created_at": "datetime",
+      "updated_at": "datetime",
+      "stats": {
+        "contact_count": 0,
+        "deal_count": 0,
+        "pipeline_value": 0,
+        "won_revenue": 0
+      }
+    }
+  ],
   "total": 50,
   "page": 1,
   "limit": 20,
   "total_pages": 3
 }
 ```
+
+Each company returned by `GET /companies`, `GET /companies/:id`, `POST /companies`, and `PATCH /companies/:id` includes `stats`, so clients do not need to call `/companies/:id/contacts`, `/companies/:id/deals`, or `/companies/:id/stats` just to show company summary counts.
 
 ---
 

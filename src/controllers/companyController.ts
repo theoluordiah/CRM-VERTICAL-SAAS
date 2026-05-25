@@ -14,6 +14,84 @@ interface CompanyQuery {
   industry?: string;
 }
 
+type CompanyStats = {
+  contact_count: number;
+  deal_count: number;
+  pipeline_value: number;
+  won_revenue: number;
+};
+
+const emptyStats = (): CompanyStats => ({
+  contact_count: 0,
+  deal_count: 0,
+  pipeline_value: 0,
+  won_revenue: 0
+});
+
+const getCompanyStatsMap = async (
+  companyIds: mongoose.Types.ObjectId[],
+  organizationId: mongoose.Types.ObjectId
+): Promise<Map<string, CompanyStats>> => {
+  if (companyIds.length === 0) return new Map();
+
+  const [contactStats, dealStats] = await Promise.all([
+    Contact.aggregate([
+      { $match: { organization_id: organizationId, company_id: { $in: companyIds } } },
+      { $group: { _id: '$company_id', contact_count: { $sum: 1 } } }
+    ]),
+    Deal.aggregate([
+      { $match: { organization_id: organizationId, company_id: { $in: companyIds } } },
+      {
+        $group: {
+          _id: '$company_id',
+          deal_count: { $sum: 1 },
+          pipeline_value: { $sum: { $cond: [{ $eq: ['$status', 'open'] }, { $ifNull: ['$value', 0] }, 0] } },
+          won_revenue: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, { $ifNull: ['$value', 0] }, 0] } }
+        }
+      }
+    ])
+  ]);
+
+  const statsMap = new Map<string, CompanyStats>();
+
+  companyIds.forEach((companyId) => {
+    statsMap.set(companyId.toString(), emptyStats());
+  });
+
+  contactStats.forEach((stat) => {
+    const key = stat._id.toString();
+    const current = statsMap.get(key) || emptyStats();
+    current.contact_count = stat.contact_count;
+    statsMap.set(key, current);
+  });
+
+  dealStats.forEach((stat) => {
+    const key = stat._id.toString();
+    const current = statsMap.get(key) || emptyStats();
+    current.deal_count = stat.deal_count;
+    current.pipeline_value = stat.pipeline_value;
+    current.won_revenue = stat.won_revenue;
+    statsMap.set(key, current);
+  });
+
+  return statsMap;
+};
+
+const attachCompanyStats = async <T extends { _id: unknown }>(
+  companies: T[],
+  organizationId: mongoose.Types.ObjectId
+) => {
+  const companyIds = companies
+    .map((company) => company._id)
+    .filter((id): id is mongoose.Types.ObjectId => id instanceof mongoose.Types.ObjectId);
+  const statsMap = await getCompanyStatsMap(companyIds, organizationId);
+
+  return companies.map((company) => ({
+    ...company,
+    stats: statsMap.get(String(company._id)) || emptyStats()
+  }));
+};
+
 export const listCompanies = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { page = 1, limit = 20, search, owner_id, industry } = req.query as CompanyQuery;
@@ -46,10 +124,12 @@ export const listCompanies = async (req: AuthRequest, res: Response): Promise<vo
       Company.countDocuments(query)
     ]);
 
+    const companiesWithStats = await attachCompanyStats(companies, organizationId);
+
     const response: PaginatedResponse<ICompany> = {
       status: true,
       message: 'Companies retrieved successfully',
-      data: companies,
+      data: companiesWithStats as unknown as ICompany[],
       total,
       page,
       limit,
@@ -92,7 +172,9 @@ export const getCompanyById = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    res.json({ status: true, message: 'Company retrieved successfully', data: company });
+    const [companyWithStats] = await attachCompanyStats([company], organizationId);
+
+    res.json({ status: true, message: 'Company retrieved successfully', data: companyWithStats });
   } catch (error) {
     res.status(500).json({
       status: false,
@@ -137,7 +219,11 @@ export const createCompany = async (req: AuthRequest, res: Response): Promise<vo
     const populatedCompany = await Company.findOne({ _id: company._id, organization_id: organizationId })
       .populate('owner_id', 'email display_name');
 
-    res.status(201).json({ status: true, message: 'Company created successfully', data: populatedCompany });
+    const [companyWithStats] = populatedCompany
+      ? await attachCompanyStats([populatedCompany.toObject ? populatedCompany.toObject() : populatedCompany], organizationId)
+      : [populatedCompany];
+
+    res.status(201).json({ status: true, message: 'Company created successfully', data: companyWithStats });
   } catch (error) {
     res.status(500).json({
       status: false,
@@ -188,7 +274,9 @@ export const updateCompany = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    res.json({ status: true, message: 'Company updated successfully', data: company });
+    const [companyWithStats] = await attachCompanyStats([company.toObject ? company.toObject() : company], organizationId);
+
+    res.json({ status: true, message: 'Company updated successfully', data: companyWithStats });
   } catch (error) {
     res.status(500).json({
       status: false,
@@ -306,23 +394,13 @@ export const getCompanyStats = async (req: AuthRequest, res: Response): Promise<
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
 
-    const [contactCount, dealCount, dealValue] = await Promise.all([
-      Contact.countDocuments({ company_id: id, organization_id: organizationId }),
-      Deal.countDocuments({ company_id: id, organization_id: organizationId }),
-      Deal.aggregate([
-        { $match: { company_id: new mongoose.Types.ObjectId(id), organization_id: organizationId } },
-        { $group: { _id: null, total: { $sum: '$value' } } }
-      ])
-    ]);
+    const statsMap = await getCompanyStatsMap([new mongoose.Types.ObjectId(id)], organizationId);
+    const stats = statsMap.get(id) || emptyStats();
 
     res.json({
       status: true,
       message: 'Company stats retrieved successfully',
-      data: {
-        contact_count: contactCount,
-        deal_count: dealCount,
-        total_deal_value: dealValue[0]?.total || 0
-      }
+      data: stats
     });
   } catch (error) {
     res.status(500).json({

@@ -154,10 +154,13 @@ GET    /api/v1/companies
        - List companies
        - Query: page, limit, search, industry, owner_id
        - Response: { companies: [...], total, page, limit }
+       - Each company includes stats:
+         { contact_count, deal_count, pipeline_value, won_revenue }
 
 GET    /api/v1/companies/:id
        - Get company by ID
-       - Response: Company object
+       - Response: Company object with stats:
+         { contact_count, deal_count, pipeline_value, won_revenue }
 
 POST   /api/v1/companies
        - Create company
@@ -171,6 +174,8 @@ POST   /api/v1/companies
            phone?, 
            address?   }
        - Response: Created company
+       - Created company includes stats:
+         { contact_count, deal_count, pipeline_value, won_revenue }
 
 PATCH  /api/v1/companies/:id
        - Update company
@@ -184,6 +189,8 @@ PATCH  /api/v1/companies/:id
            phone?, 
            address?  }
        - Response: Updated company
+       - Updated company includes stats:
+         { contact_count, deal_count, pipeline_value, won_revenue }
 
 DELETE /api/v1/companies/:id
        - Delete company
