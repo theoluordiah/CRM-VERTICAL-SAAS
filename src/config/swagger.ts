@@ -15,7 +15,7 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: 'https://crm-backend-bju5.onrender.com/api/v1',
+        url: 'https://crm-vertical-saas.onrender.com/api/v1',
         description: 'Production API v1',
       },
       {
