@@ -120,20 +120,30 @@ const createVerificationOtp = async (user: IUser): Promise<boolean> => {
 interface SignupBody {
   email: string;
   password: string;
+  company_name?: string;
   full_name?: string;
   display_name?: string;
 }
 
 export const signup = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { email, password, full_name, display_name } = req.body as SignupBody;
+    const { email, password, company_name, full_name, display_name } = req.body as SignupBody;
     const normalizedEmail = normalizeEmail(email);
+    const normalizedCompanyName = (company_name || '').trim();
     const normalizedFullName = (full_name || display_name || '').trim();
 
     if (!normalizedEmail || !password) {
       res.status(400).json({
         status: false,
         message: 'Email and password are required'
+      });
+      return;
+    }
+
+    if (!normalizedCompanyName) {
+      res.status(400).json({
+        status: false,
+        message: 'Company name is required'
       });
       return;
     }
@@ -157,8 +167,8 @@ export const signup = async (req: AuthRequest, res: Response): Promise<void> => 
 
     const role: UserRole = 'admin';
     const organization = await Organization.create({
-      name: normalizedFullName,
-      slug: `${makeOrganizationSlug(normalizedFullName)}-${crypto.randomBytes(3).toString('hex')}`
+      name: normalizedCompanyName,
+      slug: `${makeOrganizationSlug(normalizedCompanyName)}-${crypto.randomBytes(3).toString('hex')}`
     });
 
     const user = new User({

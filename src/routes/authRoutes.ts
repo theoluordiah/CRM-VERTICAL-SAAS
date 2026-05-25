@@ -28,7 +28,7 @@ const router: RouterType = Router();
  * /auth/signup:
  *   post:
  *     summary: Register a new tenant admin
- *     description: Creates a user, creates a new organization, seeds that organization's default sales pipeline, and sends an email verification OTP.
+ *     description: Creates a user, creates a company organization, seeds that organization's default sales pipeline, and sends an email verification OTP.
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -36,7 +36,7 @@ const router: RouterType = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [email, password, full_name]
+ *             required: [email, password, company_name, full_name]
  *             properties:
  *               email:
  *                 type: string
@@ -44,6 +44,8 @@ const router: RouterType = Router();
  *               password:
  *                 type: string
  *                 minLength: 8
+ *               company_name:
+ *                 type: string
  *               full_name:
  *                 type: string
  *     responses:
@@ -63,6 +65,7 @@ const router: RouterType = Router();
 router.post('/signup', authRateLimit, validateBody({
   email: { required: true, type: 'string', maxLength: 254 },
   password: { required: true, type: 'string', minLength: 8, maxLength: 128 },
+  company_name: { required: true, type: 'string', maxLength: 160 },
   full_name: { type: 'string', maxLength: 120 }
 }), signup);
 
