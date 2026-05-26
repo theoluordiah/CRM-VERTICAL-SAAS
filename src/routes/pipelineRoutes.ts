@@ -339,10 +339,20 @@ router.delete('/stages/:id', authorize('admin'), deleteStage);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [stage_ids]
  *             properties:
+ *               stages:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required: [id, order]
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     order:
+ *                       type: number
  *               stage_ids:
  *                 type: array
+ *                 description: Alternative input. Order is inferred from array position.
  *                 items:
  *                   type: string
  *     responses:

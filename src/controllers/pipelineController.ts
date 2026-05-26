@@ -5,6 +5,18 @@ import { Deal } from '../models/Deal';
 import { AuthRequest } from '../types';
 import { requireOrganization } from '../utils/tenant';
 
+const isValidObjectId = (value: unknown): value is string =>
+  typeof value === 'string' && mongoose.Types.ObjectId.isValid(value);
+
+const areValidObjectIds = (values: unknown): values is string[] =>
+  Array.isArray(values) && values.every(isValidObjectId);
+
+const normalizeName = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 export const listPipelines = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const organizationId = requireOrganization(req, res);
@@ -63,6 +75,15 @@ interface CreatePipelineBody {
 export const createPipeline = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, description, is_default } = req.body as CreatePipelineBody;
+    const pipelineName = normalizeName(name);
+
+    if (!pipelineName) {
+      res.status(400).json({
+        status: false,
+        message: 'Pipeline name is required'
+      });
+      return;
+    }
 
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
@@ -72,7 +93,7 @@ export const createPipeline = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const pipeline = new Pipeline({
-      name,
+      name: pipelineName,
       description,
       is_default: is_default || false,
       organization_id: organizationId
@@ -99,7 +120,7 @@ export const updatePipeline = async (req: AuthRequest, res: Response): Promise<v
     const { id } = req.params as { id: string };
     const { name, description, is_default } = req.body as UpdatePipelineBody;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!isValidObjectId(id)) {
       res.status(400).json({
         status: false,
         message: 'Invalid pipeline ID'
@@ -108,7 +129,17 @@ export const updatePipeline = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const updateObj: Record<string, unknown> = {};
-    if (name) updateObj.name = name;
+    if (name !== undefined) {
+      const pipelineName = normalizeName(name);
+      if (!pipelineName) {
+        res.status(400).json({
+          status: false,
+          message: 'Pipeline name cannot be empty'
+        });
+        return;
+      }
+      updateObj.name = pipelineName;
+    }
     if (description !== undefined) updateObj.description = description;
 
     const organizationId = requireOrganization(req, res);
@@ -197,6 +228,14 @@ export const listPipelineStages = async (req: AuthRequest, res: Response): Promi
       pipeline_id = defaultPipeline._id.toString();
     }
 
+    if (!isValidObjectId(pipeline_id)) {
+      res.status(400).json({
+        status: false,
+        message: 'Invalid pipeline ID'
+      });
+      return;
+    }
+
     const stages = await PipelineStage.find({ pipeline_id, organization_id: organizationId })
       .sort({ order: 1 })
       .lean();
@@ -257,11 +296,36 @@ interface CreateStageBody {
 export const createStage = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, description, pipeline_id, order, is_won, is_lost, assignees } = req.body as CreateStageBody;
+    const stageName = normalizeName(name);
 
-    if (!mongoose.Types.ObjectId.isValid(pipeline_id)) {
+    if (!stageName) {
+      res.status(400).json({
+        status: false,
+        message: 'Stage name is required'
+      });
+      return;
+    }
+
+    if (!isValidObjectId(pipeline_id)) {
       res.status(400).json({
         status: false,
         message: 'Invalid pipeline ID'
+      });
+      return;
+    }
+
+    if (order !== undefined && (typeof order !== 'number' || !Number.isFinite(order))) {
+      res.status(400).json({
+        status: false,
+        message: 'Stage order must be a valid number'
+      });
+      return;
+    }
+
+    if (assignees !== undefined && !areValidObjectIds(assignees)) {
+      res.status(400).json({
+        status: false,
+        message: 'assignees must be an array of valid user IDs'
       });
       return;
     }
@@ -284,7 +348,7 @@ export const createStage = async (req: AuthRequest, res: Response): Promise<void
     }
 
     const stage = new PipelineStage({
-      name,
+      name: stageName,
       description,
       pipeline_id: new mongoose.Types.ObjectId(pipeline_id),
       order: stageOrder,
@@ -320,7 +384,7 @@ export const updateStage = async (req: AuthRequest, res: Response): Promise<void
     const { id } = req.params as { id: string };
     const updateData = req.body as UpdateStageBody;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!isValidObjectId(id)) {
       res.status(400).json({
         status: false,
         message: 'Invalid stage ID'
@@ -330,7 +394,34 @@ export const updateStage = async (req: AuthRequest, res: Response): Promise<void
 
     const updateObj: Record<string, unknown> = { ...updateData };
 
-    if (updateData.assignees) {
+    if (updateData.name !== undefined) {
+      const stageName = normalizeName(updateData.name);
+      if (!stageName) {
+        res.status(400).json({
+          status: false,
+          message: 'Stage name cannot be empty'
+        });
+        return;
+      }
+      updateObj.name = stageName;
+    }
+
+    if (updateData.order !== undefined && (typeof updateData.order !== 'number' || !Number.isFinite(updateData.order))) {
+      res.status(400).json({
+        status: false,
+        message: 'Stage order must be a valid number'
+      });
+      return;
+    }
+
+    if (updateData.assignees !== undefined) {
+      if (!areValidObjectIds(updateData.assignees)) {
+        res.status(400).json({
+          status: false,
+          message: 'assignees must be an array of valid user IDs'
+        });
+        return;
+      }
       updateObj.assignees = updateData.assignees.map(
         (a: string) => new mongoose.Types.ObjectId(a)
       );
@@ -424,6 +515,14 @@ export const getPipelineBoard = async (req: AuthRequest, res: Response): Promise
       pipeline_id = defaultPipeline._id.toString();
     }
 
+    if (!isValidObjectId(pipeline_id)) {
+      res.status(400).json({
+        status: false,
+        message: 'Invalid pipeline ID'
+      });
+      return;
+    }
+
     const stages = await PipelineStage.find({ pipeline_id, organization_id: organizationId })
       .populate('assignees', 'email display_name')
       .sort({ order: 1 })
@@ -476,17 +575,76 @@ export const reorderStages = async (req: AuthRequest, res: Response): Promise<vo
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
 
-    const { stages } = req.body as { stages: { id: string; order: number }[] };
+    const { stages, stage_ids } = req.body as {
+      stages?: { id: string; order: number }[];
+      stage_ids?: string[];
+    };
 
-    if (!Array.isArray(stages) || stages.length === 0) {
+    const stageUpdates = Array.isArray(stages)
+      ? stages
+      : Array.isArray(stage_ids)
+        ? stage_ids.map((id, index) => ({ id, order: index + 1 }))
+        : [];
+
+    if (stageUpdates.length === 0) {
       res.status(400).json({
         status: false,
-        message: 'stages array is required'
+        message: 'stages or stage_ids array is required'
       });
       return;
     }
 
-    const bulkOps = stages.map((stage) => ({
+    const seenIds = new Set<string>();
+    for (const stage of stageUpdates) {
+      if (!stage || typeof stage !== 'object') {
+        res.status(400).json({
+          status: false,
+          message: 'Each stage must include id and order'
+        });
+        return;
+      }
+
+      if (!isValidObjectId(stage.id)) {
+        res.status(400).json({
+          status: false,
+          message: 'Each stage ID must be valid'
+        });
+        return;
+      }
+
+      if (seenIds.has(stage.id)) {
+        res.status(400).json({
+          status: false,
+          message: 'Duplicate stage IDs are not allowed'
+        });
+        return;
+      }
+
+      if (typeof stage.order !== 'number' || !Number.isFinite(stage.order)) {
+        res.status(400).json({
+          status: false,
+          message: 'Each stage order must be a valid number'
+        });
+        return;
+      }
+
+      seenIds.add(stage.id);
+    }
+
+    const existingStages = await PipelineStage.countDocuments({
+      _id: { $in: stageUpdates.map((stage) => new mongoose.Types.ObjectId(stage.id)) },
+      organization_id: organizationId
+    });
+
+    if (existingStages !== stageUpdates.length) {
+      res.status(404).json({
+        status: false,
+        message: 'One or more stages were not found'
+      });
+      return;
+    }
+
+    const bulkOps = stageUpdates.map((stage) => ({
       updateOne: {
         filter: { _id: new mongoose.Types.ObjectId(stage.id), organization_id: organizationId },
         update: { $set: { order: stage.order } }

@@ -734,6 +734,26 @@ Query parameters:
 
 ---
 
+#### POST /pipelines/stages/reorder
+**Request Body:**
+```json
+{
+  "stage_ids": ["stage_id_1", "stage_id_2", "stage_id_3"]
+}
+```
+
+The endpoint also accepts explicit order values:
+```json
+{
+  "stages": [
+    { "id": "stage_id_1", "order": 1 },
+    { "id": "stage_id_2", "order": 2 }
+  ]
+}
+```
+
+---
+
 ### Default Pipeline Stages
 
 When the server starts, a default pipeline with the following stages is automatically created:
