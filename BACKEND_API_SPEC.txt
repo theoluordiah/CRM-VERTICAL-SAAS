@@ -505,76 +505,59 @@ DELETE /api/v1/email-templates/:id
 14. ANALYTICS & REPORTS
 ================================================================================
 
-GET    /api/v1/analytics/overview
-       - Get dashboard overview
-       - Response: {
-           open_deals: count,
-           revenue_forecast: number,
-           total_contacts: count,
-           emails_sent: count,
-           deals_by_stage: [...],
-           deals_by_source: [...],
-           conversion_rate: number,
-           avg_deal_value: number
-         }
+GET    /api/v1/analytics
+       - Get everything needed for the analytics board
+       - Query: from?, to?
+       - Response: { summary, pipeline_by_stage, lead_sources, team_productivity, task_summary }
 
-GET    /api/v1/analytics/pipeline
-       - Pipeline analytics
-       - Query: date_from?, date_to?
-       - Response: {
-           stages: [{ id, name, count, value, avg_time_in_stage }],
-           total_value: number,
-           won_value: number,
-           lost_value: number
-         }
+GET    /api/v1/analytics/summary
+       - Get top analytics numbers
+       - Query: from?, to?
+       - Response: { won_revenue, pipeline_value, win_rate, average_cycle_days, lead_conversion_rate, tasks_completed_last_30_days }
 
-GET    /api/v1/analytics/leads
-       - Lead analytics
-       - Query: date_from?, date_to?
-       - Response: {
-           total: count,
-           by_status: [...],
-           by_source: [...],
-           by_channel: [...],
-           conversion_rate: number
-         }
+GET    /api/v1/analytics/pipeline-by-stage
+       - Get deal count and value by stage
+       - Query: from?, to?
+       - Response: [{ stage_id, name, count, value }]
 
-GET    /api/v1/analytics/activities
-       - Activity analytics
-       - Query: date_from?, date_to?, user_id?
-       - Response: {
-           by_type: [...],
-           by_user: [...],
-           trend: [...]
-         }
+GET    /api/v1/analytics/lead-sources
+       - Get lead/source counts
+       - Query: from?, to?
+       - Response: [{ name, value }]
 
-GET    /api/v1/analytics/tasks
-       - Task analytics
-       - Query: date_from?, date_to?
-       - Response: {
-           total: count,
-           completed: count,
-           overdue: count,
-           by_priority: [...],
-           completion_rate: number
-         }
+GET    /api/v1/analytics/team-productivity
+       - Get task performance by team member
+       - Query: from?, to?
+       - Response: [{ user_id, name, assigned, completed, open, overdue, recent_completed, completion_rate }]
 
-GET    /api/v1/reports/deals
-       - Deals report
-       - Query: date_from?, date_to?, group_by (day|week|month)
-       - Response: { data: [...] }
+GET    /api/v1/analytics/task-summary
+       - Get total task numbers
+       - Query: from?, to?
+       - Response: { assigned, completed, open, overdue, completion_rate }
 
-GET    /api/v1/reports/revenue
-       - Revenue report
-       - Query: date_from?, date_to?, group_by
-       - Response: { data: [...] }
+GET    /api/v1/reports
+       - Get everything needed for the reports page
+       - Response: { summary, pipeline_by_stage, deal_source_mix, contact_temperature }
 
-GET    /api/v1/reports/performance
-       - Sales performance report
-       - Query: date_from?, date_to?, user_id?
-       - Response: {
-           users: [{ user_id, name, deals_count, deals_value, tasks_completed }]
-         }
+GET    /api/v1/reports/summary
+       - Get top report numbers
+       - Response: { total_deals, open_value, won_value, lost_value }
+
+GET    /api/v1/reports/pipeline-by-stage
+       - Get total deal value and count by stage
+       - Response: [{ name, count, value }]
+
+GET    /api/v1/reports/deal-source-mix
+       - Get deal source mix
+       - Response: [{ name, value }]
+
+GET    /api/v1/reports/contact-temperature
+       - Get contact temperature counts
+       - Response: [{ name, value }]
+
+GET    /api/v1/reports/export
+       - Export reports as CSV
+       - Query: type=summary|pipeline-by-stage|deal-source-mix|contact-temperature
 
 ================================================================================
 15. AUDIT LOG

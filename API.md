@@ -661,6 +661,59 @@ This creates a `stage_change` activity.
 
 ---
 
+### Analytics
+
+All analytics routes require authentication. `GET /analytics` also accepts optional `from` and `to` query parameters.
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | /analytics | Get complete analytics board data | All roles |
+| GET | /analytics/summary | Get top analytics numbers | All roles |
+| GET | /analytics/pipeline-by-stage | Get deal count and value by stage | All roles |
+| GET | /analytics/lead-sources | Get lead/source counts | All roles |
+| GET | /analytics/team-productivity | Get task performance by team member | All roles |
+| GET | /analytics/task-summary | Get total task numbers | All roles |
+
+#### GET /analytics
+**Response:**
+```json
+{
+  "summary": {},
+  "pipeline_by_stage": [],
+  "lead_sources": [],
+  "team_productivity": [],
+  "task_summary": {}
+}
+```
+
+---
+
+### Reports
+
+All report routes require authentication.
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | /reports | Get complete reports page data | All roles |
+| GET | /reports/summary | Get report summary numbers | All roles |
+| GET | /reports/pipeline-by-stage | Get deal count and value by stage | All roles |
+| GET | /reports/deal-source-mix | Get deal source mix | All roles |
+| GET | /reports/contact-temperature | Get contact temperature counts | All roles |
+| GET | /reports/export | Export report data as CSV | admin, sales_manager |
+
+#### GET /reports
+**Response:**
+```json
+{
+  "summary": {},
+  "pipeline_by_stage": [],
+  "deal_source_mix": [],
+  "contact_temperature": []
+}
+```
+
+---
+
 ### Default Pipeline Stages
 
 When the server starts, a default pipeline with the following stages is automatically created:
