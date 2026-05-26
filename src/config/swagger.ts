@@ -346,6 +346,97 @@ const options: swaggerJsdoc.Options = {
                     active_companies: { type: 'integer', example: 12 },
                   },
                 },
+                card_progress: {
+                  type: 'object',
+                  properties: {
+                    open_deals: {
+                      type: 'object',
+                      properties: {
+                        current: { type: 'number', example: 1 },
+                        previous: { type: 'number', example: 0 },
+                        change: { type: 'number', example: 1 },
+                        percent_change: { type: 'number', example: 100 },
+                      },
+                    },
+                    revenue_forecast: {
+                      type: 'object',
+                      properties: {
+                        current: { type: 'number', example: 7623426 },
+                        previous: { type: 'number', example: 0 },
+                        change: { type: 'number', example: 7623426 },
+                        percent_change: { type: 'number', example: 100 },
+                      },
+                    },
+                    active_contacts: {
+                      type: 'object',
+                      properties: {
+                        current: { type: 'number', example: 3 },
+                        previous: { type: 'number', example: 1 },
+                        change: { type: 'number', example: 2 },
+                        percent_change: { type: 'number', example: 200 },
+                      },
+                    },
+                    active_companies: {
+                      type: 'object',
+                      properties: {
+                        current: { type: 'number', example: 2 },
+                        previous: { type: 'number', example: 1 },
+                        change: { type: 'number', example: 1 },
+                        percent_change: { type: 'number', example: 100 },
+                      },
+                    },
+                  },
+                },
+                charts: {
+                  type: 'object',
+                  properties: {
+                    from: { type: 'string', format: 'date-time' },
+                    to: { type: 'string', format: 'date-time' },
+                    contacts: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          date: { type: 'string', example: '2026-05-25' },
+                          value: { type: 'number', example: 3 },
+                        },
+                      },
+                    },
+                    companies: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          date: { type: 'string', example: '2026-05-25' },
+                          value: { type: 'number', example: 2 },
+                        },
+                      },
+                    },
+                    deals: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          date: { type: 'string', example: '2026-05-25' },
+                          open_deals: { type: 'number', example: 1 },
+                          revenue_forecast: { type: 'number', example: 7623426 },
+                          total_deals: { type: 'number', example: 1 },
+                          total_value: { type: 'number', example: 7623426 },
+                        },
+                      },
+                    },
+                    tasks: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          date: { type: 'string', example: '2026-05-25' },
+                          value: { type: 'number', example: 4 },
+                        },
+                      },
+                    },
+                  },
+                },
                 pipeline_review: {
                   type: 'array',
                   items: {
@@ -361,6 +452,13 @@ const options: swaggerJsdoc.Options = {
                     },
                   },
                 },
+                pipeline_total: {
+                  type: 'object',
+                  properties: {
+                    count: { type: 'integer', example: 1 },
+                    value: { type: 'number', example: 7623426 },
+                  },
+                },
                 recent_contacts: {
                   type: 'array',
                   items: {
@@ -370,7 +468,6 @@ const options: swaggerJsdoc.Options = {
                       first_name: { type: 'string', example: 'John' },
                       last_name: { type: 'string', example: 'Doe' },
                       full_name: { type: 'string', example: 'John Doe' },
-                      initials: { type: 'string', example: 'JD' },
                       role_title: { type: 'string', example: 'CEO' },
                       temperature: { type: 'string', enum: ['hot', 'warm', 'cold'], example: 'hot' },
                       company: { type: 'string', nullable: true },

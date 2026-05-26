@@ -44,6 +44,28 @@ const dateFormatForGroup = (groupBy?: string): string => {
   return '%Y-%m-%d';
 };
 
+const dashboardTrendRange = (range: DateRange): Required<DateRange> => {
+  const to = range.to || new Date();
+  const from = range.from || new Date(to.getTime() - 29 * 24 * 60 * 60 * 1000);
+
+  return { from, to };
+};
+
+const previousRange = (range: Required<DateRange>): Required<DateRange> => {
+  const duration = range.to.getTime() - range.from.getTime();
+  const previousTo = new Date(range.from.getTime() - 1);
+  const previousFrom = new Date(previousTo.getTime() - duration);
+
+  return { from: previousFrom, to: previousTo };
+};
+
+const progressMetric = (current: number, previous: number) => ({
+  current,
+  previous,
+  change: current - previous,
+  percent_change: previous > 0 ? Math.round(((current - previous) / previous) * 100) : current > 0 ? 100 : 0
+});
+
 const escapeCSV = (value: unknown): string => {
   if (value === null || value === undefined) return '';
   const text = String(value);
@@ -59,8 +81,12 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
     if (!organizationId) return;
 
     const range = parseDateRange(req);
+    const trendRange = dashboardTrendRange(range);
+    const previousTrendRange = previousRange(trendRange);
     const orgQuery = { organization_id: organizationId };
     const periodQuery = { ...orgQuery, ...dateFilter('created_at', range) };
+    const trendQuery = { ...orgQuery, ...dateFilter('created_at', trendRange) };
+    const previousTrendQuery = { ...orgQuery, ...dateFilter('created_at', previousTrendRange) };
     const now = new Date();
     const nextSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
@@ -81,7 +107,15 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
       pipelineStages,
       pipelineStageDeals,
       recentContacts,
-      dealSources
+      dealSources,
+      previousContacts,
+      previousCompanies,
+      previousOpenDeals,
+      previousRevenueForecast,
+      contactsTrend,
+      companiesTrend,
+      dealsTrend,
+      tasksTrend
     ] = await Promise.all([
       Contact.countDocuments(orgQuery),
       Company.countDocuments(orgQuery),
@@ -132,6 +166,47 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
         { $match: orgQuery },
         { $group: { _id: { $ifNull: ['$source', 'Unknown'] }, count: { $sum: 1 }, value: { $sum: { $ifNull: ['$value', 0] } } } },
         { $sort: { count: -1 } }
+      ]),
+      Contact.countDocuments(previousTrendQuery),
+      Company.countDocuments(previousTrendQuery),
+      Deal.countDocuments({ ...previousTrendQuery, status: 'open' }),
+      Deal.aggregate([
+        { $match: { ...previousTrendQuery, status: 'open' } },
+        { $group: { _id: null, value: { $sum: { $ifNull: ['$value', 0] } } } }
+      ]),
+      Contact.aggregate([
+        { $match: trendQuery },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }, value: { $sum: 1 } } },
+        { $project: { date: '$_id', value: 1, _id: 0 } },
+        { $sort: { date: 1 } }
+      ]),
+      Company.aggregate([
+        { $match: trendQuery },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }, value: { $sum: 1 } } },
+        { $project: { date: '$_id', value: 1, _id: 0 } },
+        { $sort: { date: 1 } }
+      ]),
+      Deal.aggregate([
+        { $match: trendQuery },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } },
+            open_deals: { $sum: { $cond: [{ $eq: ['$status', 'open'] }, 1, 0] } },
+            revenue_forecast: {
+              $sum: { $cond: [{ $eq: ['$status', 'open'] }, { $ifNull: ['$value', 0] }, 0] }
+            },
+            total_deals: { $sum: 1 },
+            total_value: { $sum: { $ifNull: ['$value', 0] } }
+          }
+        },
+        { $project: { date: '$_id', open_deals: 1, revenue_forecast: 1, total_deals: 1, total_value: 1, _id: 0 } },
+        { $sort: { date: 1 } }
+      ]),
+      Task.aggregate([
+        { $match: trendQuery },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } }, value: { $sum: 1 } } },
+        { $project: { date: '$_id', value: 1, _id: 0 } },
+        { $sort: { date: 1 } }
       ])
     ]);
 
@@ -154,6 +229,24 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
         is_lost: stage.is_lost
       };
     });
+    const pipelineTotal = pipelineReview.reduce(
+      (total, stage) => ({
+        count: total.count + stage.count,
+        value: total.value + stage.value
+      }),
+      { count: 0, value: 0 }
+    );
+    const previousRevenueForecastValue = previousRevenueForecast[0]?.value || 0;
+    const currentContactsTrend = contactsTrend.reduce((total, item) => total + item.value, 0);
+    const currentCompaniesTrend = companiesTrend.reduce((total, item) => total + item.value, 0);
+    const currentOpenDealsTrend = dealsTrend.reduce((total, item) => total + item.open_deals, 0);
+    const currentRevenueForecastTrend = dealsTrend.reduce((total, item) => total + item.revenue_forecast, 0);
+    const cardProgress = {
+      open_deals: progressMetric(currentOpenDealsTrend, previousOpenDeals),
+      revenue_forecast: progressMetric(currentRevenueForecastTrend, previousRevenueForecastValue),
+      active_contacts: progressMetric(currentContactsTrend, previousContacts),
+      active_companies: progressMetric(currentCompaniesTrend, previousCompanies)
+    };
 
     res.json({
       status: true,
@@ -165,13 +258,25 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
           active_contacts: totalContacts,
           active_companies: totalCompanies
         },
+        card_progress: cardProgress,
+        charts: {
+          from: trendRange.from,
+          to: trendRange.to,
+          contacts: contactsTrend,
+          companies: companiesTrend,
+          deals: dealsTrend,
+          tasks: tasksTrend
+        },
         pipeline_review: pipelineReview,
+        pipeline_total: {
+          count: pipelineTotal.count,
+          value: pipelineTotal.value
+        },
         recent_contacts: recentContacts.map((contact) => ({
           id: contact._id,
           first_name: contact.first_name,
           last_name: contact.last_name,
           full_name: `${contact.first_name} ${contact.last_name}`.trim(),
-          initials: `${contact.first_name?.[0] || ''}${contact.last_name?.[0] || ''}`.toUpperCase(),
           role_title: contact.role_title,
           temperature: contact.temperature,
           company: (contact.company_id as unknown as { name?: string })?.name,
@@ -203,6 +308,8 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response): Prom
           won_value: wonDeals?.value || 0,
           lost_deals: lostDeals?.count || 0,
           lost_value: lostDeals?.value || 0,
+          total_deals: pipelineTotal.count,
+          total_value: pipelineTotal.value,
           win_rate: closedDeals > 0 ? Math.round(((wonDeals?.count || 0) / closedDeals) * 100) : 0
         },
         tasks: {
