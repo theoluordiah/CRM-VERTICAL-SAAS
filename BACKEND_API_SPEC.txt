@@ -199,90 +199,82 @@ DELETE /api/v1/companies/:id
 
 
 ================================================================================
-6. DEALS & PIPELINE
+6. PIPELINE
 ================================================================================
 
-GET    /api/v1/deals
-       - List deals
-       - Query: page, limit, search, stage_id, owner_id, company_id, contact_id
-       - Response: { deals: [...], total, page, limit }
+GET    /api/v1/pipeline
+       - Get everything the pipeline page needs
+       - Response: { stages: [], deals: [], team_members: [], stage_assignees: [] }
 
-GET    /api/v1/deals/:id
-       - Get deal by ID
-       - Response: Deal object with company, contact, stage
+GET    /api/v1/pipeline/stages
+       - Get all pipeline stages in order
+       - Response: [{ id, name, position, is_won, is_lost }]
 
-POST   /api/v1/deals
+GET    /api/v1/pipeline/deals
+       - Get all pipeline deals
+       - Response: [{ id, title, value, source, industry, stage_id, company }]
+
+POST   /api/v1/pipeline/deals
        - Create deal
-       - Body: {
-           title, value?, currency?, expected_close_date?,
-           stage_id?, source?, industry?,
-           company_id?, contact_id?
-         }
+       - Body: { title, value?, source?, industry?, stage_id? }
+       - If stage_id is missing, the deal is placed in the first stage
+       - Logged-in user becomes owner
        - Response: Created deal
 
-PATCH  /api/v1/deals/:id
+PATCH  /api/v1/pipeline/deals/:dealId
        - Update deal
-       - Body: { title?, value?, currency?, expected_close_date?, stage_id?, source?, industry?, owner_id? }
+       - Body: { title?, value?, source?, industry?, stage_id? }
        - Response: Updated deal
 
-DELETE /api/v1/deals/:id
-       - Delete deal
-       - Response: { success: true }
-
-POST   /api/v1/deals/:id/stage
-       - Update deal stage (triggers activity log)
+PATCH  /api/v1/pipeline/deals/:dealId/stage
+       - Move deal to another stage and create stage_change activity
        - Body: { stage_id }
-       - Response: Updated deal + activity logged
-
-POST   /api/v1/deals/:id/assign
-       - Assign deal to user
-       - Body: { owner_id }
        - Response: Updated deal
 
-GET    /api/v1/deals/:id/activities
+DELETE /api/v1/pipeline/deals/:dealId
+       - Delete deal
+       - Access: admin, sales_manager
+       - Response: { message: "Deal deleted successfully" }
+
+GET    /api/v1/pipeline/team-members
+       - Get team members assignable to stages
+       - Response: [{ id, display_name, email }]
+
+GET    /api/v1/pipeline/stage-assignees
+       - Get stage assignments
+       - Response: [{ stage_id, user_id }]
+
+POST   /api/v1/pipeline/stages/:stageId/assignees
+       - Assign team member to stage
+       - Access: admin, sales_manager
+       - Body: { user_id }
+       - Response: { stage_id, user_id }
+
+DELETE /api/v1/pipeline/stages/:stageId/assignees/:userId
+       - Remove team member from stage
+       - Access: admin, sales_manager
+       - Response: { message: "Stage assignee removed successfully" }
+
+GET    /api/v1/pipeline/deals/:dealId/activities
        - Get deal activity history
-       - Response: { activities: [...] }
+       - Response: [{ id, deal_id, type, content, created_at }]
 
-GET    /api/v1/deals/:id/timeline
-       - Get deal timeline (activities, tasks, notes)
-       - Response: { timeline: [...] }
-
-POST   /api/v1/deals/bulk-import
-       - Bulk import deals
-       - Body: { deals: [...] }
-       - Response: { imported: count, errors: [...] }
-
-================================================================================
-7. PIPELINE STAGES
-================================================================================
-
-GET    /api/v1/pipeline-stages
-       - List pipeline stages
-       - Query: include_counts
-       - Response: { stages: [...] }
-
-GET    /api/v1/pipeline-stages/:id
-       - Get stage by ID
-       - Response: Stage object
-
-POST   /api/v1/pipeline-stages
-       - Create stage (admin only)
+POST   /api/v1/pipeline/stages
+       - Create stage
+       - Access: admin, sales_manager
        - Body: { name, position, is_won?, is_lost? }
        - Response: Created stage
 
-PATCH  /api/v1/pipeline-stages/:id
-       - Update stage (admin only)
+PATCH  /api/v1/pipeline/stages/:stageId
+       - Update stage
+       - Access: admin, sales_manager
        - Body: { name?, position?, is_won?, is_lost? }
        - Response: Updated stage
 
-DELETE /api/v1/pipeline-stages/:id
-       - Delete stage (admin only)
-       - Response: { success: true }
-
-POST   /api/v1/pipeline-stages/reorder
-       - Reorder stages (admin only)
-       - Body: { stages: [{ id, position }] }
-       - Response: { success: true }
+DELETE /api/v1/pipeline/stages/:stageId
+       - Delete stage
+       - Access: admin, sales_manager
+       - Response: { message: "Stage deleted successfully" }
 
 ================================================================================
 8. TASKS & CALENDAR

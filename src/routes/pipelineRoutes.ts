@@ -1,24 +1,20 @@
-/**
- * Pipeline management routes
- * Handles CRUD operations for pipelines and stages
- */
 import { Router, type Router as RouterType } from 'express';
 import {
-  listPipelines,
-  getPipelineById,
-  createPipeline,
-  updatePipeline,
-  deletePipeline,
-  listPipelineStages,
-  getStageById,
-  createStage,
-  updateStage,
-  deleteStage,
-  getPipelineBoard,
-  listStageAssignees,
-  addStageAssignee,
-  removeStageAssignee,
-  reorderStages
+  assignPipelineStageMember,
+  createPipelineDeal,
+  createPipelineStage,
+  deletePipelineDeal,
+  deletePipelineStage,
+  getPipeline,
+  getPipelineDealActivities,
+  getPipelineDeals,
+  getPipelineStageAssignees,
+  getPipelineStages,
+  getPipelineTeamMembers,
+  movePipelineDealStage,
+  removePipelineStageMember,
+  updatePipelineDeal,
+  updatePipelineStage
 } from '../controllers/pipelineController';
 import { authenticate, authorize } from '../middleware/auth';
 
@@ -28,80 +24,41 @@ router.use(authenticate);
 
 /**
  * @swagger
- * /pipelines:
- *   get:
- *     summary: List organization pipelines
- *     description: Returns pipelines scoped to the authenticated user's organization.
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Pipelines retrieved successfully
+ * tags:
+ *   - name: Pipeline
+ *     description: Pipeline stages, deals, team members, and stage assignments
  */
-router.get('/', listPipelines);
 
 /**
  * @swagger
- * /pipelines/board:
+ * /pipeline:
  *   get:
- *     summary: Get organization pipeline board
- *     description: Returns stages and deals for a pipeline in the authenticated user's organization.
- *     tags: [Pipelines]
+ *     summary: Get complete pipeline page data
+ *     tags: [Pipeline]
  *     security:
  *       - cookieAuth: []
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: pipeline_id
- *         required: false
- *         schema:
- *           type: string
- *         description: Pipeline ID (optional, uses default pipeline if not provided)
  *     responses:
  *       200:
- *         description: Pipeline board retrieved successfully
+ *         description: Complete pipeline payload
  */
-router.get('/board', getPipelineBoard);
+router.get('/', getPipeline);
 
 /**
  * @swagger
- * /pipelines/stage-assignees:
+ * /pipeline/stages:
  *   get:
- *     summary: List stage assignees
- *     description: Returns flattened stage-user assignments for a pipeline.
- *     tags: [Pipelines]
+ *     summary: Get all pipeline stages in order
+ *     tags: [Pipeline]
  *     security:
  *       - cookieAuth: []
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: pipeline_id
- *         required: false
- *         schema:
- *           type: string
- *         description: Pipeline ID. If omitted, the default organization pipeline is used.
  *     responses:
  *       200:
- *         description: Stage assignees retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: boolean
- *                 message:
- *                   type: string
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/StageAssignee'
+ *         description: Pipeline stages
  *   post:
- *     summary: Add stage assignee
- *     description: Assigns a user to a pipeline stage. Requires admin or sales_manager.
- *     tags: [Pipelines]
+ *     summary: Create a pipeline stage
+ *     tags: [Pipeline]
  *     security:
  *       - cookieAuth: []
  *       - bearerAuth: []
@@ -111,33 +68,291 @@ router.get('/board', getPipelineBoard);
  *         application/json:
  *           schema:
  *             type: object
+ *             required: [name]
  *             properties:
- *               stage_id:
+ *               name:
  *                 type: string
- *               stageId:
- *                 type: string
- *                 description: Camel-case alias for stage_id.
- *               user_id:
- *                 type: string
- *               userId:
- *                 type: string
- *                 description: Camel-case alias for user_id.
+ *               position:
+ *                 type: number
+ *               is_won:
+ *                 type: boolean
+ *               is_lost:
+ *                 type: boolean
  *     responses:
  *       201:
- *         description: Stage assignee added successfully
- *       403:
- *         description: Admin or sales_manager access required
+ *         description: Pipeline stage created
  */
-router.get('/stage-assignees', listStageAssignees);
-router.post('/stage-assignees', authorize('admin', 'sales_manager'), addStageAssignee);
+router.get('/stages', getPipelineStages);
+router.post('/stages', authorize('admin', 'sales_manager'), createPipelineStage);
 
 /**
  * @swagger
- * /pipelines/stage-assignees/{stageId}/{userId}:
+ * /pipeline/stages/{stageId}:
+ *   patch:
+ *     summary: Update a pipeline stage
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: stageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               position:
+ *                 type: number
+ *               is_won:
+ *                 type: boolean
+ *               is_lost:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Pipeline stage updated
  *   delete:
- *     summary: Remove stage assignee
- *     description: Removes a user assignment from a pipeline stage. Requires admin or sales_manager.
- *     tags: [Pipelines]
+ *     summary: Delete a pipeline stage
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: stageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Pipeline stage deleted
+ */
+router.patch('/stages/:stageId', authorize('admin', 'sales_manager'), updatePipelineStage);
+router.delete('/stages/:stageId', authorize('admin', 'sales_manager'), deletePipelineStage);
+
+/**
+ * @swagger
+ * /pipeline/deals:
+ *   get:
+ *     summary: Get all pipeline deals
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Pipeline deals
+ *   post:
+ *     summary: Create a pipeline deal
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title]
+ *             properties:
+ *               title:
+ *                 type: string
+ *               value:
+ *                 type: number
+ *               source:
+ *                 type: string
+ *               industry:
+ *                 type: string
+ *               stage_id:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Pipeline deal created
+ */
+router.get('/deals', getPipelineDeals);
+router.post('/deals', authorize('admin', 'sales_manager', 'sales_rep'), createPipelineDeal);
+
+/**
+ * @swagger
+ * /pipeline/deals/{dealId}:
+ *   patch:
+ *     summary: Update a pipeline deal
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dealId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               value:
+ *                 type: number
+ *               source:
+ *                 type: string
+ *               industry:
+ *                 type: string
+ *               stage_id:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Pipeline deal updated
+ *   delete:
+ *     summary: Delete a pipeline deal
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dealId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Pipeline deal deleted
+ */
+router.patch('/deals/:dealId', authorize('admin', 'sales_manager', 'sales_rep'), updatePipelineDeal);
+router.delete('/deals/:dealId', authorize('admin', 'sales_manager'), deletePipelineDeal);
+
+/**
+ * @swagger
+ * /pipeline/deals/{dealId}/stage:
+ *   patch:
+ *     summary: Move a deal to another stage
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dealId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [stage_id]
+ *             properties:
+ *               stage_id:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Deal moved and stage_change activity created
+ */
+router.patch('/deals/:dealId/stage', authorize('admin', 'sales_manager', 'sales_rep'), movePipelineDealStage);
+
+/**
+ * @swagger
+ * /pipeline/deals/{dealId}/activities:
+ *   get:
+ *     summary: Get deal activity history
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: dealId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Deal activities
+ */
+router.get('/deals/:dealId/activities', getPipelineDealActivities);
+
+/**
+ * @swagger
+ * /pipeline/team-members:
+ *   get:
+ *     summary: Get assignable team members
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Team members
+ */
+router.get('/team-members', getPipelineTeamMembers);
+
+/**
+ * @swagger
+ * /pipeline/stage-assignees:
+ *   get:
+ *     summary: Get all stage assignments
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Stage assignees
+ */
+router.get('/stage-assignees', getPipelineStageAssignees);
+
+/**
+ * @swagger
+ * /pipeline/stages/{stageId}/assignees:
+ *   post:
+ *     summary: Assign a team member to a pipeline stage
+ *     tags: [Pipeline]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: stageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [user_id]
+ *             properties:
+ *               user_id:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Stage assignee created
+ */
+router.post('/stages/:stageId/assignees', authorize('admin', 'sales_manager'), assignPipelineStageMember);
+
+/**
+ * @swagger
+ * /pipeline/stages/{stageId}/assignees/{userId}:
+ *   delete:
+ *     summary: Remove a team member from a pipeline stage
+ *     tags: [Pipeline]
  *     security:
  *       - cookieAuth: []
  *       - bearerAuth: []
@@ -154,311 +369,8 @@ router.post('/stage-assignees', authorize('admin', 'sales_manager'), addStageAss
  *           type: string
  *     responses:
  *       200:
- *         description: Stage assignee removed successfully
- *       403:
- *         description: Admin or sales_manager access required
+ *         description: Stage assignee removed
  */
-router.delete('/stage-assignees/:stageId/:userId', authorize('admin', 'sales_manager'), removeStageAssignee);
-
-/**
- * @swagger
- * /pipelines:
- *   post:
- *     summary: Create a pipeline
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name]
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               is_default:
- *                 type: boolean
- *     responses:
- *       201:
- *         description: Pipeline created successfully
- *       403:
- *         description: Admin access required
- */
-router.post('/', authorize('admin'), createPipeline);
-
-/**
- * @swagger
- * /pipelines/{id}:
- *   patch:
- *     summary: Update pipeline
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               is_default:
- *                 type: boolean
- *     responses:
- *       200:
- *         description: Pipeline updated successfully
- */
-router.patch('/:id', authorize('admin'), updatePipeline);
-
-/**
- * @swagger
- * /pipelines/{id}:
- *   delete:
- *     summary: Delete pipeline
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Pipeline deleted successfully
- *       403:
- *         description: Admin access required
- */
-router.delete('/:id', authorize('admin'), deletePipeline);
-
-/**
- * @swagger
- * /pipelines/stages/all:
- *   get:
- *     summary: List all pipeline stages
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: pipeline_id
- *         required: false
- *         schema:
- *           type: string
- *         description: Pipeline ID (optional, uses default pipeline if not provided)
- *     responses:
- *       200:
- *         description: Stages retrieved successfully
- */
-router.get('/stages/all', listPipelineStages);
-
-/**
- * @swagger
- * /pipelines/stages/{id}:
- *   get:
- *     summary: Get stage by ID
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Stage retrieved successfully
- *       404:
- *         description: Stage not found
- */
-router.get('/stages/:id', getStageById);
-
-/**
- * @swagger
- * /pipelines/stages:
- *   post:
- *     summary: Create a stage
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [name, pipeline_id]
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               pipeline_id:
- *                 type: string
- *               order:
- *                 type: integer
- *               is_won:
- *                 type: boolean
- *               is_lost:
- *                 type: boolean
- *               assignees:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       201:
- *         description: Stage created successfully
- *       403:
- *         description: Admin access required
- */
-router.post('/stages', authorize('admin'), createStage);
-
-/**
- * @swagger
- * /pipelines/stages/{id}:
- *   patch:
- *     summary: Update stage
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               order:
- *                 type: integer
- *               is_won:
- *                 type: boolean
- *               is_lost:
- *                 type: boolean
- *               assignees:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Stage updated successfully
- */
-router.patch('/stages/:id', authorize('admin'), updateStage);
-
-/**
- * @swagger
- * /pipelines/stages/{id}:
- *   delete:
- *     summary: Delete stage
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Stage deleted successfully
- *       403:
- *         description: Admin access required
- */
-router.delete('/stages/:id', authorize('admin'), deleteStage);
-
-/**
- * @swagger
- * /pipelines/stages/reorder:
- *   post:
- *     summary: Reorder stages
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               stages:
- *                 type: array
- *                 items:
- *                   type: object
- *                   required: [id, order]
- *                   properties:
- *                     id:
- *                       type: string
- *                     order:
- *                       type: number
- *               stage_ids:
- *                 type: array
- *                 description: Alternative input. Order is inferred from array position.
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Stages reordered successfully
- *       403:
- *         description: Admin access required
- */
-router.post('/stages/reorder', authorize('admin'), reorderStages);
-
-/**
- * @swagger
- * /pipelines/{id}:
- *   get:
- *     summary: Get pipeline by ID
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Pipeline retrieved successfully
- *       404:
- *         description: Pipeline not found
- */
-router.get('/:id', getPipelineById);
+router.delete('/stages/:stageId/assignees/:userId', authorize('admin', 'sales_manager'), removePipelineStageMember);
 
 export default router;

@@ -542,63 +542,6 @@ name, industry, website, email, phone, address, contact_person, notes, owner_ema
 
 ---
 
-### Deals
-
-All deal routes require authentication.
-
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| GET | /deals | List deals | All roles |
-| GET | /deals/:id | Get deal | All roles |
-| POST | /deals | Create deal | admin, sales_manager, sales_rep |
-| PATCH | /deals/:id | Update deal | admin, sales_manager, sales_rep |
-| DELETE | /deals/:id | Delete deal | admin, sales_manager |
-| GET | /deals/:id/activities | Get deal activities | All roles |
-| GET | /deals/:id/tasks | Get deal tasks | All roles |
-| GET | /deals/:id/stats | Get deal stats | All roles |
-| POST | /deals/:id/stage | Update deal stage | admin, sales_manager, sales_rep |
-| POST | /deals/bulk-stage | Bulk update stage | admin, sales_manager |
-
-#### GET /deals
-Query parameters:
-- `page` (default: 1)
-- `limit` (default: 20)
-- `search` - Search by title
-- `company_id` - Filter by company
-- `owner_id` - Filter by owner
-- `stage_id` - Filter by pipeline stage
-- `status` - Filter by status (open, won, lost)
-
----
-
-#### POST /deals
-**Request Body:**
-```json
-{
-  "title": "string",
-  "value": "number",
-  "currency": "string",
-  "expected_close_date": "datetime",
-  "stage_id": "string",
-  "source": "string",
-  "industry": "string",
-  "company_id": "string",
-  "contact_id": "string"
-}
-```
-
----
-
-#### POST /deals/:id/stage
-**Request Body:**
-```json
-{
-  "stage_id": "string"
-}
-```
-
----
-
 ### Tasks
 
 All task routes require authentication.
@@ -651,104 +594,68 @@ Query parameters:
 
 ---
 
-### Pipelines
+### Pipeline
 
-All pipeline routes require authentication.
+All pipeline routes require authentication and are available under `/pipeline`.
 
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
-| GET | /pipelines | List pipelines | All roles |
-| GET | /pipelines/board | Get pipeline board | All roles |
-| GET | /pipelines/:id | Get pipeline | All roles |
-| POST | /pipelines | Create pipeline | admin only |
-| PATCH | /pipelines/:id | Update pipeline | admin only |
-| DELETE | /pipelines/:id | Delete pipeline | admin only |
-| GET | /pipelines/stages/all | List stages | All roles |
-| GET | /pipelines/stages/:id | Get stage | All roles |
-| POST | /pipelines/stages | Create stage | admin only |
-| PATCH | /pipelines/stages/:id | Update stage | admin only |
-| DELETE | /pipelines/stages/:id | Delete stage | admin only |
-| POST | /pipelines/stages/reorder | Reorder stages | admin only |
+| GET | /pipeline | Get stages, deals, team members, and stage assignees | All roles |
+| GET | /pipeline/stages | Get all pipeline stages in order | All roles |
+| GET | /pipeline/deals | Get all pipeline deals | All roles |
+| POST | /pipeline/deals | Create a deal | admin, sales_manager, sales_rep |
+| PATCH | /pipeline/deals/:dealId | Update a deal | admin, sales_manager, sales_rep |
+| PATCH | /pipeline/deals/:dealId/stage | Move a deal to another stage | admin, sales_manager, sales_rep |
+| DELETE | /pipeline/deals/:dealId | Delete a deal | admin, sales_manager |
+| GET | /pipeline/team-members | Get assignable team members | All roles |
+| GET | /pipeline/stage-assignees | Get stage assignments | All roles |
+| POST | /pipeline/stages/:stageId/assignees | Assign team member to stage | admin, sales_manager |
+| DELETE | /pipeline/stages/:stageId/assignees/:userId | Remove team member from stage | admin, sales_manager |
+| GET | /pipeline/deals/:dealId/activities | Get deal activity history | All roles |
+| POST | /pipeline/stages | Create a stage | admin, sales_manager |
+| PATCH | /pipeline/stages/:stageId | Update a stage | admin, sales_manager |
+| DELETE | /pipeline/stages/:stageId | Delete a stage | admin, sales_manager |
 
-#### GET /pipelines/board
-Query parameters:
-- `pipeline_id` (required)
-
+#### GET /pipeline
 **Response:**
 ```json
 {
-  "status": true,
-  "message": "Pipeline board retrieved successfully",
-  "data": [
-    {
-      "stage": { "id", "name", "order", "is_won", "is_lost", "assignees": [...] },
-      "deals": [...],
-      "stats": { "deal_count", "total_value" }
-    }
-  ]
+  "stages": [],
+  "deals": [],
+  "team_members": [],
+  "stage_assignees": []
 }
 ```
 
----
-
-#### POST /pipelines
+#### POST /pipeline/deals
 **Request Body:**
 ```json
 {
-  "name": "string",
-  "description": "string",
-  "is_default": "boolean"
+  "title": "New deal",
+  "value": 10000,
+  "source": "LinkedIn",
+  "industry": "Finance",
+  "stage_id": "stage_id"
 }
 ```
 
----
+If `stage_id` is missing, the deal is placed in the first stage.
 
-#### POST /pipelines/stages
+#### PATCH /pipeline/deals/:dealId/stage
 **Request Body:**
 ```json
 {
-  "name": "string",
-  "description": "string",
-  "pipeline_id": "string",
-  "order": "number",
-  "is_won": "boolean",
-  "is_lost": "boolean",
-  "assignees": ["user_id"]
+  "stage_id": "new_stage_id"
 }
 ```
 
----
+This creates a `stage_change` activity.
 
-#### PATCH /pipelines/stages/:id
+#### POST /pipeline/stages/:stageId/assignees
 **Request Body:**
 ```json
 {
-  "name": "string",
-  "description": "string",
-  "order": "number",
-  "is_won": "boolean",
-  "is_lost": "boolean",
-  "assignees": ["user_id"]
-}
-```
-
----
-
-#### POST /pipelines/stages/reorder
-**Request Body:**
-```json
-{
-  "stage_ids": ["stage_id_1", "stage_id_2", "stage_id_3"]
-}
-```
-
-The endpoint also accepts explicit order values:
-```json
-{
-  "stages": [
-    { "id": "stage_id_1", "order": 1 },
-    { "id": "stage_id_2", "order": 2 }
-  ]
+  "user_id": "user_id"
 }
 ```
 

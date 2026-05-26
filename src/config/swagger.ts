@@ -238,35 +238,24 @@ const options: swaggerJsdoc.Options = {
             updated_at: { type: 'string', format: 'date-time' },
           },
         },
-        Deal: {
+        PipelineDeal: {
           type: 'object',
           properties: {
-            _id: { type: 'string' },
+            id: { type: 'string' },
             title: { type: 'string' },
             value: { type: 'number', nullable: true },
-            currency: { type: 'string', example: 'USD' },
-            status: { type: 'string', enum: ['open', 'won', 'lost'] },
-            expected_close_date: { type: 'string', format: 'date-time', nullable: true },
             stage_id: { type: 'string', nullable: true },
             source: { type: 'string', nullable: true },
             industry: { type: 'string', nullable: true },
-            company_id: { type: 'string', nullable: true },
-            contact_id: { type: 'string', nullable: true },
-            owner_id: { type: 'string', nullable: true },
-            organization_id: { type: 'string' },
+            company: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+              },
+            },
             stage_changed_at: { type: 'string', format: 'date-time', nullable: true },
-            created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' },
-          },
-        },
-        Pipeline: {
-          type: 'object',
-          properties: {
-            _id: { type: 'string' },
-            name: { type: 'string' },
-            description: { type: 'string', nullable: true },
-            is_default: { type: 'boolean' },
-            organization_id: { type: 'string' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },
@@ -274,17 +263,19 @@ const options: swaggerJsdoc.Options = {
         PipelineStage: {
           type: 'object',
           properties: {
-            _id: { type: 'string' },
+            id: { type: 'string' },
             name: { type: 'string' },
-            description: { type: 'string', nullable: true },
-            pipeline_id: { type: 'string' },
-            order: { type: 'number' },
+            position: { type: 'number' },
             is_won: { type: 'boolean' },
             is_lost: { type: 'boolean' },
-            assignees: { type: 'array', items: { type: 'string' } },
-            organization_id: { type: 'string' },
-            created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        PipelineTeamMember: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            display_name: { type: 'string' },
+            email: { type: 'string' },
           },
         },
         StageAssignee: {
@@ -292,34 +283,26 @@ const options: swaggerJsdoc.Options = {
           properties: {
             stage_id: { type: 'string' },
             user_id: { type: 'string' },
-            user: { $ref: '#/components/schemas/User' },
           },
         },
-        PipelineOverviewResponse: {
+        PipelinePage: {
           type: 'object',
           properties: {
-            status: { type: 'boolean', example: true },
-            message: { type: 'string', example: 'Pipeline retrieved successfully' },
-            data: {
-              type: 'object',
-              properties: {
-                stages: {
-                  type: 'array',
-                  items: { $ref: '#/components/schemas/PipelineStage' },
-                },
-                deals: {
-                  type: 'array',
-                  items: { $ref: '#/components/schemas/Deal' },
-                },
-                profiles: {
-                  type: 'array',
-                  items: { $ref: '#/components/schemas/User' },
-                },
-                stage_assignees: {
-                  type: 'array',
-                  items: { $ref: '#/components/schemas/StageAssignee' },
-                },
-              },
+            stages: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PipelineStage' },
+            },
+            deals: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PipelineDeal' },
+            },
+            team_members: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/PipelineTeamMember' },
+            },
+            stage_assignees: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/StageAssignee' },
             },
           },
         },
