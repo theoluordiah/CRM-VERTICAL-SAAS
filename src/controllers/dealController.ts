@@ -2,7 +2,9 @@ import { Response } from 'express';
 import mongoose from 'mongoose';
 import { Deal, IDeal, DealStatus } from '../models/Deal';
 import { Company } from '../models/Company';
+import { Contact } from '../models/Contact';
 import { Activity } from '../models/Activity';
+import { PipelineStage } from '../models/Pipeline';
 import { AuthRequest, PaginatedResponse } from '../types';
 import { requireOrganization } from '../utils/tenant';
 
@@ -15,6 +17,17 @@ interface DealQuery {
   stage_id?: string;
   status?: DealStatus;
 }
+
+const canUpdateDeal = (req: AuthRequest, deal: { owner_id?: unknown }): boolean => {
+  if (!req.user) return false;
+  if (req.user.role === 'admin' || req.user.role === 'sales_manager') return true;
+  return req.user.role === 'sales_rep' && deal.owner_id?.toString() === req.user.id;
+};
+
+const validateOptionalObjectId = (value: string | undefined, label: string): string | undefined => {
+  if (!value) return undefined;
+  return mongoose.Types.ObjectId.isValid(value) ? undefined : `Invalid ${label}`;
+};
 
 export const listDeals = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -148,12 +161,56 @@ export const createDeal = async (req: AuthRequest, res: Response): Promise<void>
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
 
+    const invalidReference =
+      validateOptionalObjectId(stage_id, 'stage ID') ||
+      validateOptionalObjectId(company_id, 'company ID') ||
+      validateOptionalObjectId(contact_id, 'contact ID');
+
+    if (invalidReference) {
+      res.status(400).json({
+        status: false,
+        message: invalidReference
+      });
+      return;
+    }
+
+    const [stageExists, companyExists, contactExists] = await Promise.all([
+      stage_id ? PipelineStage.exists({ _id: stage_id, organization_id: organizationId }) : Promise.resolve(true),
+      company_id ? Company.exists({ _id: company_id, organization_id: organizationId }) : Promise.resolve(true),
+      contact_id ? Contact.exists({ _id: contact_id, organization_id: organizationId }) : Promise.resolve(true)
+    ]);
+
+    if (!stageExists) {
+      res.status(404).json({
+        status: false,
+        message: 'Stage not found'
+      });
+      return;
+    }
+
+    if (!companyExists) {
+      res.status(404).json({
+        status: false,
+        message: 'Company not found'
+      });
+      return;
+    }
+
+    if (!contactExists) {
+      res.status(404).json({
+        status: false,
+        message: 'Contact not found'
+      });
+      return;
+    }
+
     const deal = new Deal({
       title,
       value,
       currency,
       expected_close_date: expected_close_date ? new Date(expected_close_date) : undefined,
       stage_id: stage_id ? new mongoose.Types.ObjectId(stage_id) : undefined,
+      stage_changed_at: stage_id ? new Date() : undefined,
       source,
       industry,
       company_id: company_id ? new mongoose.Types.ObjectId(company_id) : undefined,
@@ -166,8 +223,8 @@ export const createDeal = async (req: AuthRequest, res: Response): Promise<void>
 
     const populatedDeal = await Deal.findOne({ _id: deal._id, organization_id: organizationId })
       .populate('stage_id', 'name order is_won is_lost')
-      .populate('company_id', 'name industry website')
-      .populate('contact_id', 'first_name last_name')
+      .populate('company_id', 'name industry website email phone')
+      .populate('contact_id', 'first_name last_name email phone role_title')
       .populate('owner_id', 'email display_name');
 
     if (req.user?.id) {
@@ -241,6 +298,35 @@ export const updateDeal = async (req: AuthRequest, res: Response): Promise<void>
 
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
+
+    const existingDeal = await Deal.findOne({ _id: id, organization_id: organizationId }).select('owner_id').lean();
+    if (!existingDeal) {
+      res.status(404).json({
+        status: false,
+        message: 'Deal not found'
+      });
+      return;
+    }
+
+    if (!canUpdateDeal(req, existingDeal)) {
+      res.status(403).json({
+        status: false,
+        message: "You don't have permission to update this deal"
+      });
+      return;
+    }
+
+    if (updateData.stage_id) {
+      const stage = await PipelineStage.exists({ _id: updateData.stage_id, organization_id: organizationId });
+      if (!stage) {
+        res.status(404).json({
+          status: false,
+          message: 'Stage not found'
+        });
+        return;
+      }
+      updateObj.stage_changed_at = new Date();
+    }
 
     const deal = await Deal.findOneAndUpdate(
       { _id: id, organization_id: organizationId },
@@ -429,7 +515,8 @@ export const getDealStats = async (req: AuthRequest, res: Response): Promise<voi
 export const updateDealStage = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params as { id: string };
-    const { stage_id, position } = req.body as { stage_id: string; position?: number };
+    const { stage_id, stageId } = req.body as { stage_id?: string; stageId?: string };
+    const targetStageId = stage_id || stageId;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       res.status(400).json({
@@ -439,7 +526,7 @@ export const updateDealStage = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    if (!mongoose.Types.ObjectId.isValid(stage_id)) {
+    if (!targetStageId || !mongoose.Types.ObjectId.isValid(targetStageId)) {
       res.status(400).json({
         status: false,
         message: 'Invalid stage ID'
@@ -450,14 +537,51 @@ export const updateDealStage = async (req: AuthRequest, res: Response): Promise<
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
 
+    const [existingDeal, stage] = await Promise.all([
+      Deal.findOne({ _id: id, organization_id: organizationId }).select('owner_id').lean(),
+      PipelineStage.findOne({ _id: targetStageId, organization_id: organizationId }).select('name').lean()
+    ]);
+
+    if (!existingDeal) {
+      res.status(404).json({
+        status: false,
+        message: 'Deal not found'
+      });
+      return;
+    }
+
+    if (!canUpdateDeal(req, existingDeal)) {
+      res.status(403).json({
+        status: false,
+        message: "You don't have permission to update this deal"
+      });
+      return;
+    }
+
+    if (!stage) {
+      res.status(404).json({
+        status: false,
+        message: 'Stage not found'
+      });
+      return;
+    }
+
+    const stageChangedAt = new Date();
+
     const deal = await Deal.findOneAndUpdate(
       { _id: id, organization_id: organizationId },
-      { $set: { stage_id: new mongoose.Types.ObjectId(stage_id) } },
+      {
+        $set: {
+          stage_id: new mongoose.Types.ObjectId(targetStageId),
+          stage_changed_at: stageChangedAt
+        }
+      },
       { new: true }
     )
       .populate('stage_id', 'name order is_won is_lost')
-      .populate('company_id', 'name')
-      .populate('contact_id', 'first_name last_name');
+      .populate('company_id', 'name industry website email phone')
+      .populate('contact_id', 'first_name last_name email phone role_title')
+      .populate('owner_id', 'email display_name');
 
     if (!deal) {
       res.status(404).json({
@@ -468,14 +592,17 @@ export const updateDealStage = async (req: AuthRequest, res: Response): Promise<
     }
 
     if (req.user?.id) {
-      const { PipelineStage } = await import('../models/Pipeline');
-      const stage = await PipelineStage.findOne({ _id: stage_id, organization_id: organizationId });
       await Activity.create({
-        type: 'deal_stage_changed',
-        content: `Deal moved to "${stage?.name}"`,
+        type: 'stage_change',
+        content: `Moved to ${stage.name}`,
         deal_id: deal._id,
         user_id: new mongoose.Types.ObjectId(req.user.id),
-        organization_id: organizationId
+        organization_id: organizationId,
+        metadata: {
+          stage_id: targetStageId,
+          stage_name: stage.name,
+          stage_changed_at: stageChangedAt
+        }
       });
     }
 

@@ -254,6 +254,7 @@ const options: swaggerJsdoc.Options = {
             contact_id: { type: 'string', nullable: true },
             owner_id: { type: 'string', nullable: true },
             organization_id: { type: 'string' },
+            stage_changed_at: { type: 'string', format: 'date-time', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },
@@ -284,6 +285,42 @@ const options: swaggerJsdoc.Options = {
             organization_id: { type: 'string' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
+          },
+        },
+        StageAssignee: {
+          type: 'object',
+          properties: {
+            stage_id: { type: 'string' },
+            user_id: { type: 'string' },
+            user: { $ref: '#/components/schemas/User' },
+          },
+        },
+        PipelineOverviewResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Pipeline retrieved successfully' },
+            data: {
+              type: 'object',
+              properties: {
+                stages: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/PipelineStage' },
+                },
+                deals: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Deal' },
+                },
+                profiles: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/User' },
+                },
+                stage_assignees: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/StageAssignee' },
+                },
+              },
+            },
           },
         },
         Task: {

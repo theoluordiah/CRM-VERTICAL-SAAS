@@ -15,6 +15,9 @@ import {
   updateStage,
   deleteStage,
   getPipelineBoard,
+  listStageAssignees,
+  addStageAssignee,
+  removeStageAssignee,
   reorderStages
 } from '../controllers/pipelineController';
 import { authenticate, authorize } from '../middleware/auth';
@@ -61,6 +64,101 @@ router.get('/', listPipelines);
  *         description: Pipeline board retrieved successfully
  */
 router.get('/board', getPipelineBoard);
+
+/**
+ * @swagger
+ * /pipelines/stage-assignees:
+ *   get:
+ *     summary: List stage assignees
+ *     description: Returns flattened stage-user assignments for a pipeline.
+ *     tags: [Pipelines]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: pipeline_id
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Pipeline ID. If omitted, the default organization pipeline is used.
+ *     responses:
+ *       200:
+ *         description: Stage assignees retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/StageAssignee'
+ *   post:
+ *     summary: Add stage assignee
+ *     description: Assigns a user to a pipeline stage. Requires admin or sales_manager.
+ *     tags: [Pipelines]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               stage_id:
+ *                 type: string
+ *               stageId:
+ *                 type: string
+ *                 description: Camel-case alias for stage_id.
+ *               user_id:
+ *                 type: string
+ *               userId:
+ *                 type: string
+ *                 description: Camel-case alias for user_id.
+ *     responses:
+ *       201:
+ *         description: Stage assignee added successfully
+ *       403:
+ *         description: Admin or sales_manager access required
+ */
+router.get('/stage-assignees', listStageAssignees);
+router.post('/stage-assignees', authorize('admin', 'sales_manager'), addStageAssignee);
+
+/**
+ * @swagger
+ * /pipelines/stage-assignees/{stageId}/{userId}:
+ *   delete:
+ *     summary: Remove stage assignee
+ *     description: Removes a user assignment from a pipeline stage. Requires admin or sales_manager.
+ *     tags: [Pipelines]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: stageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Stage assignee removed successfully
+ *       403:
+ *         description: Admin or sales_manager access required
+ */
+router.delete('/stage-assignees/:stageId/:userId', authorize('admin', 'sales_manager'), removeStageAssignee);
 
 /**
  * @swagger

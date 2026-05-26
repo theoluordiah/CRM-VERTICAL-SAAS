@@ -97,6 +97,7 @@ router.get('/:id', getDealById);
  * /deals:
  *   post:
  *     summary: Create a deal
+ *     description: Creates a deal for the authenticated user's organization. Optional stage_id, company_id, and contact_id must be valid IDs that belong to the same organization. Deals with a stage_id appear on the pipeline board.
  *     tags: [Deals]
  *     security:
  *       - cookieAuth: []
@@ -131,6 +132,10 @@ router.get('/:id', getDealById);
  *     responses:
  *       201:
  *         description: Deal created successfully
+ *       400:
+ *         description: Invalid stage, company, or contact ID
+ *       404:
+ *         description: Stage, company, or contact not found in the current organization
  */
 router.post('/', authorize('admin', 'sales_manager', 'sales_rep'), createDeal);
 
@@ -272,6 +277,7 @@ router.get('/:id/stats', getDealStats);
  * /deals/{id}/stage:
  *   post:
  *     summary: Update deal stage
+ *     description: Moves a deal to another stage, updates stage_changed_at, and creates a stage_change activity.
  *     tags: [Deals]
  *     security:
  *       - cookieAuth: []
@@ -292,11 +298,45 @@ router.get('/:id/stats', getDealStats);
  *             properties:
  *               stage_id:
  *                 type: string
+ *               stageId:
+ *                 type: string
+ *                 description: Camel-case alias for stage_id.
  *     responses:
  *       200:
  *         description: Stage updated successfully
+ *   patch:
+ *     summary: Update deal stage
+ *     description: Moves a deal to another stage, updates stage_changed_at, and creates a stage_change activity.
+ *     tags: [Deals]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               stage_id:
+ *                 type: string
+ *               stageId:
+ *                 type: string
+ *                 description: Camel-case alias for stage_id.
+ *     responses:
+ *       200:
+ *         description: Stage updated successfully
+ *       403:
+ *         description: Sales reps can only update their own deals
  */
 router.post('/:id/stage', authorize('admin', 'sales_manager', 'sales_rep'), updateDealStage);
+router.patch('/:id/stage', authorize('admin', 'sales_manager', 'sales_rep'), updateDealStage);
 
 /**
  * @swagger

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import mongoose from 'mongoose';
 import { Pipeline, IPipeline, PipelineStage, IPipelineStage } from '../models/Pipeline';
 import { Deal } from '../models/Deal';
+import { User } from '../models/User';
 import { AuthRequest } from '../types';
 import { requireOrganization } from '../utils/tenant';
 
@@ -17,6 +18,42 @@ const normalizeName = (value: unknown): string | undefined => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+const resolvePipelineId = async (
+  organizationId: mongoose.Types.ObjectId,
+  pipelineId?: string
+): Promise<{ pipelineId?: string; error?: { statusCode: number; message: string } }> => {
+  if (pipelineId) {
+    if (!isValidObjectId(pipelineId)) {
+      return { error: { statusCode: 400, message: 'Invalid pipeline ID' } };
+    }
+
+    const pipeline = await Pipeline.exists({ _id: pipelineId, organization_id: organizationId });
+    if (!pipeline) {
+      return { error: { statusCode: 404, message: 'Pipeline not found' } };
+    }
+
+    return { pipelineId };
+  }
+
+  const defaultPipeline = await Pipeline.findOne({ organization_id: organizationId, is_default: true }).lean();
+  if (!defaultPipeline) {
+    return { error: { statusCode: 404, message: 'No pipeline found' } };
+  }
+
+  return { pipelineId: defaultPipeline._id.toString() };
+};
+
+const flattenStageAssignees = (stages: Array<{ _id: unknown; assignees?: unknown[] }>) =>
+  stages.flatMap((stage) =>
+    (stage.assignees || []).map((assignee) => ({
+      stage_id: stage._id,
+      user_id: typeof assignee === 'object' && assignee && '_id' in assignee
+        ? (assignee as { _id: unknown })._id
+        : assignee,
+      user: typeof assignee === 'object' && assignee && '_id' in assignee ? assignee : undefined
+    }))
+  );
+
 export const listPipelines = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const organizationId = requireOrganization(req, res);
@@ -28,6 +65,60 @@ export const listPipelines = async (req: AuthRequest, res: Response): Promise<vo
     res.status(500).json({
       status: false,
       message: 'Failed to fetch pipelines'
+    });
+  }
+};
+
+export const getPipelineOverview = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const organizationId = requireOrganization(req, res);
+    if (!organizationId) return;
+
+    const { pipeline_id } = req.query as { pipeline_id?: string };
+    const resolved = await resolvePipelineId(organizationId, pipeline_id);
+    if (resolved.error || !resolved.pipelineId) {
+      res.status(resolved.error?.statusCode || 404).json({
+        status: false,
+        message: resolved.error?.message || 'No pipeline found'
+      });
+      return;
+    }
+
+    const stages = await PipelineStage.find({ pipeline_id: resolved.pipelineId, organization_id: organizationId })
+      .populate('assignees', 'email display_name role avatar_url')
+      .sort({ order: 1 })
+      .lean();
+
+    const stageIds = stages.map((stage) => stage._id);
+
+    const [deals, profiles] = await Promise.all([
+      Deal.find({ stage_id: { $in: stageIds }, organization_id: organizationId })
+        .populate('stage_id', 'name order is_won is_lost')
+        .populate('company_id', 'name industry website email phone')
+        .populate('contact_id', 'first_name last_name email phone role_title')
+        .populate('owner_id', 'email display_name role avatar_url')
+        .sort({ created_at: -1 })
+        .lean(),
+      User.find({ organization_id: organizationId, is_active: true })
+        .select('email display_name role avatar_url')
+        .sort({ display_name: 1, email: 1 })
+        .lean()
+    ]);
+
+    res.json({
+      status: true,
+      message: 'Pipeline retrieved successfully',
+      data: {
+        stages,
+        deals,
+        profiles,
+        stage_assignees: flattenStageAssignees(stages)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Failed to fetch pipeline'
     });
   }
 };
@@ -566,6 +657,138 @@ export const getPipelineBoard = async (req: AuthRequest, res: Response): Promise
     res.status(500).json({
       status: false,
       message: 'Failed to fetch pipeline board'
+    });
+  }
+};
+
+export const listStageAssignees = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const organizationId = requireOrganization(req, res);
+    if (!organizationId) return;
+
+    const { pipeline_id } = req.query as { pipeline_id?: string };
+    const resolved = await resolvePipelineId(organizationId, pipeline_id);
+    if (resolved.error || !resolved.pipelineId) {
+      res.status(resolved.error?.statusCode || 404).json({
+        status: false,
+        message: resolved.error?.message || 'No pipeline found'
+      });
+      return;
+    }
+
+    const stages = await PipelineStage.find({ pipeline_id: resolved.pipelineId, organization_id: organizationId })
+      .populate('assignees', 'email display_name role avatar_url')
+      .select('assignees')
+      .lean();
+
+    res.json({
+      status: true,
+      message: 'Stage assignees retrieved successfully',
+      data: flattenStageAssignees(stages)
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Failed to fetch stage assignees'
+    });
+  }
+};
+
+export const addStageAssignee = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const organizationId = requireOrganization(req, res);
+    if (!organizationId) return;
+
+    const { stage_id, stageId, user_id, userId } = req.body as {
+      stage_id?: string;
+      stageId?: string;
+      user_id?: string;
+      userId?: string;
+    };
+
+    const targetStageId = stage_id || stageId;
+    const targetUserId = user_id || userId;
+
+    if (!isValidObjectId(targetStageId) || !isValidObjectId(targetUserId)) {
+      res.status(400).json({
+        status: false,
+        message: 'Valid stage_id and user_id are required'
+      });
+      return;
+    }
+
+    const user = await User.exists({ _id: targetUserId, organization_id: organizationId, is_active: true });
+    if (!user) {
+      res.status(404).json({
+        status: false,
+        message: 'User not found'
+      });
+      return;
+    }
+
+    const stage = await PipelineStage.findOneAndUpdate(
+      { _id: targetStageId, organization_id: organizationId },
+      { $addToSet: { assignees: new mongoose.Types.ObjectId(targetUserId) } },
+      { new: true }
+    )
+      .populate('assignees', 'email display_name role avatar_url')
+      .lean();
+
+    if (!stage) {
+      res.status(404).json({
+        status: false,
+        message: 'Stage not found'
+      });
+      return;
+    }
+
+    res.status(201).json({
+      status: true,
+      message: 'Stage assignee added successfully',
+      data: flattenStageAssignees([stage]).find((item) => item.user_id?.toString() === targetUserId)
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Failed to add stage assignee'
+    });
+  }
+};
+
+export const removeStageAssignee = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const organizationId = requireOrganization(req, res);
+    if (!organizationId) return;
+
+    const { stageId, userId } = req.params as { stageId: string; userId: string };
+
+    if (!isValidObjectId(stageId) || !isValidObjectId(userId)) {
+      res.status(400).json({
+        status: false,
+        message: 'Valid stage ID and user ID are required'
+      });
+      return;
+    }
+
+    const stage = await PipelineStage.findOneAndUpdate(
+      { _id: stageId, organization_id: organizationId },
+      { $pull: { assignees: new mongoose.Types.ObjectId(userId) } },
+      { new: true }
+    ).lean();
+
+    if (!stage) {
+      res.status(404).json({
+        status: false,
+        message: 'Stage not found'
+      });
+      return;
+    }
+
+    res.json({ status: true, message: 'Stage assignee removed successfully' });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Failed to remove stage assignee'
     });
   }
 };

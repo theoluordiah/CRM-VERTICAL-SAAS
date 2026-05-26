@@ -23,6 +23,7 @@ export interface IDeal extends Document {
   contact_id?: mongoose.Types.ObjectId;
   owner_id?: mongoose.Types.ObjectId;
   organization_id: mongoose.Types.ObjectId;
+  stage_changed_at?: Date;
   created_at: Date;
   updated_at: Date;
 }
@@ -48,7 +49,8 @@ const DealSchema = new Schema<IDeal>(
     company_id: { type: Schema.Types.ObjectId, ref: 'Company' },
     contact_id: { type: Schema.Types.ObjectId, ref: 'Contact' },
     owner_id: { type: Schema.Types.ObjectId, ref: 'User' },
-    organization_id: { type: Schema.Types.ObjectId, ref: 'Organization', required: true }
+    organization_id: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+    stage_changed_at: { type: Date }
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
