@@ -64,29 +64,6 @@ router.get('/board', getPipelineBoard);
 
 /**
  * @swagger
- * /pipelines/{id}:
- *   get:
- *     summary: Get pipeline by ID
- *     tags: [Pipelines]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Pipeline retrieved successfully
- *       404:
- *         description: Pipeline not found
- */
-router.get('/:id', getPipelineById);
-
-/**
- * @swagger
  * /pipelines:
  *   post:
  *     summary: Create a pipeline
@@ -362,5 +339,28 @@ router.delete('/stages/:id', authorize('admin'), deleteStage);
  *         description: Admin access required
  */
 router.post('/stages/reorder', authorize('admin'), reorderStages);
+
+/**
+ * @swagger
+ * /pipelines/{id}:
+ *   get:
+ *     summary: Get pipeline by ID
+ *     tags: [Pipelines]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Pipeline retrieved successfully
+ *       404:
+ *         description: Pipeline not found
+ */
+router.get('/:id', getPipelineById);
 
 export default router;

@@ -669,7 +669,7 @@ EVENTS:
 - notification:created
 - activity:created
 - deal:stage_changed
-- task:assigned
+- task:assignedsla
 - message:received
 
 ================================================================================

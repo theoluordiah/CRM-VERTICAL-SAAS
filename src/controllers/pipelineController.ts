@@ -531,8 +531,8 @@ export const getPipelineBoard = async (req: AuthRequest, res: Response): Promise
     const stageIds = stages.map((s) => s._id);
 
     const deals = await Deal.find({ stage_id: { $in: stageIds }, organization_id: organizationId })
-      .populate('company_id', 'name')
-      .populate('contact_id', 'first_name last_name')
+      .populate('company_id', 'name industry website email phone')
+      .populate('contact_id', 'first_name last_name email phone role_title')
       .populate('owner_id', 'email display_name')
       .lean();
 
