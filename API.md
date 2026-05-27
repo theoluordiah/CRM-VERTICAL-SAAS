@@ -714,6 +714,55 @@ All report routes require authentication.
 
 ---
 
+### AI Email Writer
+
+All AI writer routes require authentication.
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| POST | /ai/email/generate | Generate a CRM-aware email draft | admin, sales_manager, sales_rep |
+
+#### POST /ai/email/generate
+Generates an email subject and plain-text body. Optional `contact_id` and `deal_id` values are used only when they belong to the current user's organization.
+
+**Request Body:**
+```json
+{
+  "contact_id": "string",
+  "deal_id": "string",
+  "tone": "friendly | professional | follow_up | cold_outreach | thank_you",
+  "length": "short | medium | detailed",
+  "additional_notes": "string"
+}
+```
+
+Defaults: `tone` is `professional` and `length` is `medium`.
+
+Validation limits:
+- `additional_notes`: maximum 1200 characters
+
+Compatibility fields still accepted for older clients:
+- `purpose`: `cold_outreach`, `follow_up`, `proposal`, `thank_you`, `meeting_request`, `re_engagement`
+- `company_id`, `recipient_name`, `sender_name`, `key_points`, `custom_instructions`, `subject`
+
+**Response (200):**
+```json
+{
+  "status": true,
+  "message": "Email generated successfully",
+  "data": {
+    "subject": "string",
+    "body": "string"
+  }
+}
+```
+
+**Errors:**
+- `400` for invalid enum values, invalid IDs, or malformed compatibility fields
+- `404` when a provided contact, company, or deal is not found in the organization
+
+---
+
 ### Default Pipeline Stages
 
 When the server starts, a default pipeline with the following stages is automatically created:

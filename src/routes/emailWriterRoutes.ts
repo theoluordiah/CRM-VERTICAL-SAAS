@@ -10,7 +10,7 @@ router.use(authenticate);
  * @swagger
  * /ai/email/generate:
  *   post:
- *     summary: Generate an AI email using Gemini
+ *     summary: Generate an AI email using Groq
  *     tags: [AI Email Writer]
  *     security:
  *       - cookieAuth: []
@@ -24,21 +24,24 @@ router.use(authenticate);
  *             properties:
  *               contact_id:
  *                 type: string
- *                 description: Pull contact info for email context
+ *                 description: Optional selected contact ID for email context
  *               deal_id:
  *                 type: string
- *                 description: Pull deal info for email context
+ *                 description: Optional selected deal ID for email context
  *               company_id:
  *                 type: string
- *                 description: Pull company info for email context
+ *                 deprecated: true
+ *                 description: Optional company context for older clients
  *               purpose:
  *                 type: string
  *                 enum: [cold_outreach, follow_up, proposal, thank_you, meeting_request, re_engagement]
+ *                 deprecated: true
  *                 default: follow_up
  *               tone:
  *                 type: string
- *                 enum: [professional, friendly, formal, casual]
+ *                 enum: [friendly, professional, follow_up, cold_outreach, thank_you]
  *                 default: professional
+ *                 description: Writer option selected from the AI writer form
  *               length:
  *                 type: string
  *                 enum: [short, medium, detailed]
@@ -54,12 +57,21 @@ router.use(authenticate);
  *                 type: array
  *                 items:
  *                   type: string
+ *                   maxLength: 220
+ *                 maxItems: 10
  *                 description: Key points to include in the email
  *               custom_instructions:
  *                 type: string
- *                 description: Additional context or instructions
+ *                 maxLength: 1200
+ *                 deprecated: true
+ *                 description: Additional context or instructions for older clients
+ *               additional_notes:
+ *                 type: string
+ *                 maxLength: 1200
+ *                 description: Optional notes from the AI writer form
  *               subject:
  *                 type: string
+ *                 maxLength: 180
  *                 description: Suggested subject line
  *     responses:
  *       200:
@@ -82,6 +94,10 @@ router.use(authenticate);
  *                       type: string
  *       401:
  *         description: Unauthorized
+ *       400:
+ *         description: Validation failed
+ *       404:
+ *         description: Provided CRM context record was not found
  *       500:
  *         description: Failed to generate email
  */
