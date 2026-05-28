@@ -338,9 +338,13 @@ export const updatePipelineDeal = async (req: AuthRequest, res: Response): Promi
       { new: true, runValidators: true }
     ).populate('company_id', 'name').lean();
 
-    res.json(deal ? formatDeal(deal) : null);
+    res.json({
+      status: true,
+      message: 'Deal updated successfully',
+      data: deal ? formatDeal(deal) : null
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update pipeline deal' });
+    res.status(500).json({ status: false, message: 'Failed to update pipeline deal' });
   }
 };
 

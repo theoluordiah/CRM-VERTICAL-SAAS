@@ -251,6 +251,17 @@ router.post('/deals', authorize('admin', 'sales_manager', 'sales_rep'), createPi
  *     responses:
  *       200:
  *         description: Pipeline deal updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/PipelineDeal'
  *   delete:
  *     summary: Delete a pipeline deal
  *     tags: [Pipeline]
