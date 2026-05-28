@@ -24,13 +24,7 @@ const uploadOptions: MulterOptions = {
   fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     const allowed = [
       'application/pdf',
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'text/plain',
-      'text/csv',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
     cb(null, allowed.includes(file.mimetype));
   }
