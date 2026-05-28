@@ -39,6 +39,29 @@ const getUploadedFiles = (req: AuthRequest): Express.Multer.File[] => {
   ];
 };
 
+const getDocumentExtension = (mimeType: string): '.pdf' | '.docx' => (
+  mimeType === 'application/pdf' ? '.pdf' : '.docx'
+);
+
+const getDocumentResourceType = (mimeType: string): 'image' | 'raw' => (
+  mimeType === 'application/pdf' ? 'image' : 'raw'
+);
+
+const getStoredDocumentResourceType = (document: { mime_type: string; cloudinary_url?: string }): 'image' | 'raw' => {
+  if (document.cloudinary_url?.includes('/raw/upload/')) return 'raw';
+  if (document.cloudinary_url?.includes('/image/upload/')) return 'image';
+  return getDocumentResourceType(document.mime_type);
+};
+
+const getCloudinaryPublicId = (mimeType: string): string => {
+  const baseName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  return mimeType === 'application/pdf' ? baseName : `${baseName}${getDocumentExtension(mimeType)}`;
+};
+
+const getDocumentFormat = (mimeType: string): 'pdf' | 'docx' => (
+  mimeType === 'application/pdf' ? 'pdf' : 'docx'
+);
+
 const touchFolder = async (
   folderId: mongoose.Types.ObjectId | string | null | undefined,
   organizationId: mongoose.Types.ObjectId,
@@ -326,11 +349,13 @@ export const uploadDocumentsToFolder = async (req: AuthRequest, res: Response): 
     }
 
     const documents = await Promise.all(files.map(async (file) => {
+      const publicId = getCloudinaryPublicId(file.mimetype);
+      const resourceType = getDocumentResourceType(file.mimetype);
       const result = await cloudinary.uploader.upload(
         `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
         {
-          resource_type: 'auto',
-          public_id: `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+          resource_type: resourceType,
+          public_id: publicId,
           folder: 'crm/documents'
         }
       );
@@ -416,7 +441,18 @@ export const downloadDocument = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
-    res.redirect(document.cloudinary_url);
+    const downloadUrl = cloudinary.utils.private_download_url(
+      document.cloudinary_public_id,
+      getDocumentFormat(document.mime_type),
+      {
+        resource_type: getStoredDocumentResourceType(document),
+        type: 'upload',
+        expires_at: Math.floor(Date.now() / 1000) + 300,
+        attachment: true
+      }
+    );
+
+    res.redirect(downloadUrl);
   } catch (error) {
     res.status(500).json({ status: false, message: 'Failed to download document' });
   }
