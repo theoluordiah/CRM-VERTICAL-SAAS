@@ -427,6 +427,10 @@ DELETE /api/v1/folders/:folderId
        - Delete folder and documents inside it
        - Response: { success: true }
 
+GET    /api/v1/folders/:folderId/documents
+       - Get documents inside a folder
+       - Response: { documents: [...] }
+
 POST   /api/v1/folders/:folderId/documents
        - Upload one or more documents into a folder
        - Form-data: document or documents[]

@@ -317,6 +317,43 @@ export const uploadDocumentsToFolder = async (req: AuthRequest, res: Response): 
   }
 };
 
+export const getFolderDocuments = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { folderId } = req.params as { folderId: string };
+
+    if (!mongoose.Types.ObjectId.isValid(folderId)) {
+      res.status(400).json({ status: false, message: 'Invalid folder ID' });
+      return;
+    }
+
+    const organizationId = requireOrganization(req, res);
+    if (!organizationId) return;
+
+    const folder = await Folder.exists({ _id: folderId, organization_id: organizationId });
+    if (!folder) {
+      res.status(404).json({ status: false, message: 'Folder not found' });
+      return;
+    }
+
+    const documents = await CRMFile.find({
+      folder_id: new mongoose.Types.ObjectId(folderId),
+      organization_id: organizationId
+    })
+      .populate('owner_id', 'email display_name')
+      .populate('folder_id', 'name description')
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.json({
+      status: true,
+      message: 'Folder documents retrieved successfully',
+      data: documents
+    });
+  } catch (error) {
+    res.status(500).json({ status: false, message: 'Failed to fetch folder documents' });
+  }
+};
+
 export const downloadDocument = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params as { documentId: string };

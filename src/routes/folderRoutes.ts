@@ -4,6 +4,7 @@ import multer from 'multer';
 import {
   createFolder,
   deleteFolder,
+  getFolderDocuments,
   getFolders,
   updateFolder,
   uploadDocumentsToFolder
@@ -143,6 +144,25 @@ router.delete('/:folderId', authorize('admin', 'sales_manager'), deleteFolder);
 /**
  * @swagger
  * /folders/{folderId}/documents:
+ *   get:
+ *     summary: Get documents inside a folder
+ *     tags: [Folders]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: folderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Folder documents retrieved successfully
+ *       400:
+ *         description: Invalid folder ID
+ *       404:
+ *         description: Folder not found
  *   post:
  *     summary: Upload documents into a folder
  *     description: Upload one file with `document` or multiple files with `documents`. Maximum 10 files, 25MB each.
@@ -179,6 +199,7 @@ router.delete('/:folderId', authorize('admin', 'sales_manager'), deleteFolder);
  *       404:
  *         description: Folder not found
  */
+router.get('/:folderId/documents', getFolderDocuments);
 router.post(
   '/:folderId/documents',
   authorize('admin', 'sales_manager', 'sales_rep'),

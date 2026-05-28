@@ -772,6 +772,7 @@ All folder routes require authentication.
 | POST | /folders | Create a folder | admin, sales_manager, sales_rep |
 | PATCH | /folders/:folderId | Edit folder name/description | admin, sales_manager, sales_rep |
 | DELETE | /folders/:folderId | Delete folder and documents inside it | admin, sales_manager |
+| GET | /folders/:folderId/documents | Get documents inside a folder | All roles |
 | POST | /folders/:folderId/documents | Upload documents into folder | admin, sales_manager, sales_rep |
 
 Folder responses include `last_modified_by` with the last user's `_id`, `email`, and `display_name`. Creating/editing a folder, uploading documents into it, editing a document in it, or deleting a document from it updates this value.
