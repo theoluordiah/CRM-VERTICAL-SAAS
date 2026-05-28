@@ -117,6 +117,50 @@ export const getFolders = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
+export const getFolderById = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { folderId } = req.params as { folderId: string };
+
+    if (!mongoose.Types.ObjectId.isValid(folderId)) {
+      res.status(400).json({ status: false, message: 'Invalid folder ID' });
+      return;
+    }
+
+    const organizationId = requireOrganization(req, res);
+    if (!organizationId) return;
+
+    const folder = await Folder.findOne({ _id: folderId, organization_id: organizationId })
+      .populate('owner_id', 'email display_name')
+      .populate('last_modified_by', 'email display_name')
+      .lean();
+
+    if (!folder) {
+      res.status(404).json({ status: false, message: 'Folder not found' });
+      return;
+    }
+
+    const documents = await CRMFile.find({
+      folder_id: new mongoose.Types.ObjectId(folderId),
+      organization_id: organizationId
+    })
+      .populate('owner_id', 'email display_name')
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.json({
+      status: true,
+      message: 'Folder retrieved successfully',
+      data: {
+        ...folder,
+        document_count: documents.length,
+        documents
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ status: false, message: 'Failed to fetch folder' });
+  }
+};
+
 export const createFolder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const name = asTrimmedString(req.body?.name, 120);

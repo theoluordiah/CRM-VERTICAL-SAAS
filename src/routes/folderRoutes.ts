@@ -4,6 +4,7 @@ import multer from 'multer';
 import {
   createFolder,
   deleteFolder,
+  getFolderById,
   getFolderDocuments,
   getFolders,
   updateFolder,
@@ -85,6 +86,26 @@ router.post('/', authorize('admin', 'sales_manager', 'sales_rep'), createFolder)
 /**
  * @swagger
  * /folders/{folderId}:
+ *   get:
+ *     summary: Get a folder by ID
+ *     description: Returns the folder and the documents/files inside it.
+ *     tags: [Folders]
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: folderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Folder retrieved successfully
+ *       400:
+ *         description: Invalid folder ID
+ *       404:
+ *         description: Folder not found
  *   patch:
  *     summary: Edit a folder
  *     tags: [Folders]
@@ -138,6 +159,7 @@ router.post('/', authorize('admin', 'sales_manager', 'sales_rep'), createFolder)
  *       404:
  *         description: Folder not found
  */
+router.get('/:folderId', getFolderById);
 router.patch('/:folderId', authorize('admin', 'sales_manager', 'sales_rep'), updateFolder);
 router.delete('/:folderId', authorize('admin', 'sales_manager'), deleteFolder);
 
