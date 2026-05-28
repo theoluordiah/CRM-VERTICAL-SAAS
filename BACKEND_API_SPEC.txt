@@ -200,7 +200,7 @@ DELETE /api/v1/companies/:id
 
 GET    /api/v1/pipeline
        - Get everything the pipeline page needs
-       - Response: { stages: [], deals: [], team_members: [], stage_assignees: [] }
+       - Response: { stages: [{ id, name, total_deals, total_value, position, is_won, is_lost, assignedTo: { id, email, name } | null, deals }], team_members: [] }
 
 GET    /api/v1/pipeline/stages
        - Get all pipeline stages in order

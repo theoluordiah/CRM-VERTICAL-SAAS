@@ -599,7 +599,7 @@ All pipeline routes require authentication and are available under `/pipeline`.
 
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
-| GET | /pipeline | Get stages, deals, team members, and stage assignees | All roles |
+| GET | /pipeline | Get stages with grouped deals and team members | All roles |
 | GET | /pipeline/stages | Get all pipeline stages in order | All roles |
 | GET | /pipeline/deals | Get all pipeline deals | All roles |
 | POST | /pipeline/deals | Create a deal | admin, sales_manager, sales_rep |
@@ -619,10 +619,24 @@ All pipeline routes require authentication and are available under `/pipeline`.
 **Response:**
 ```json
 {
-  "stages": [],
-  "deals": [],
-  "team_members": [],
-  "stage_assignees": []
+  "stages": [
+    {
+      "id": "stage_id",
+      "name": "Qualified",
+      "total_deals": 0,
+      "total_value": 0,
+      "position": 2,
+      "is_won": false,
+      "is_lost": false,
+      "assignedTo": {
+        "id": "user_id",
+        "email": "sales@example.com",
+        "name": "Sales Rep"
+      },
+      "deals": []
+    }
+  ],
+  "team_members": []
 }
 ```
 

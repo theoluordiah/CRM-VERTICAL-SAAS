@@ -50,6 +50,17 @@ const formatStage = (stage: {
   is_lost: stage.is_lost
 });
 
+const formatTeamMember = (user: {
+  _id: unknown;
+  display_name?: string;
+  email: string;
+}) => ({
+  id: user._id,
+  name: user.display_name || user.email,
+  display_name: user.display_name,
+  email: user.email
+});
+
 const formatDeal = (deal: {
   _id: unknown;
   title: string;
@@ -118,20 +129,32 @@ export const getPipeline = async (req: AuthRequest, res: Response): Promise<void
         .lean()
     ]);
 
+    const formattedDeals = deals.map(formatDeal);
+    const formattedTeamMembers = teamMembers.map(formatTeamMember);
+    const teamMemberById = new Map(
+      formattedTeamMembers.map((member) => [member.id?.toString(), member])
+    );
+
     res.json({
-      stages: stages.map(formatStage),
-      deals: deals.map(formatDeal),
-      team_members: teamMembers.map((user) => ({
-        id: user._id,
-        display_name: user.display_name,
-        email: user.email
-      })),
-      stage_assignees: stages.flatMap((stage) =>
-        (stage.assignees || []).map((userId) => ({
-          stage_id: stage._id,
-          user_id: userId
-        }))
-      )
+      stages: stages.map((stage) => {
+        const stageDeals = formattedDeals.filter((deal) => deal.stage_id?.toString() === stage._id.toString());
+        const assignedTo = stage.assignees?.[0]
+          ? teamMemberById.get(stage.assignees[0].toString()) || null
+          : null;
+
+        return {
+          id: stage._id,
+          name: stage.name,
+          total_deals: stageDeals.length,
+          total_value: stageDeals.reduce((total, deal) => total + (Number(deal.value) || 0), 0),
+          position: stage.order,
+          is_won: stage.is_won,
+          is_lost: stage.is_lost,
+          assignedTo,
+          deals: stageDeals
+        };
+      }),
+      team_members: formattedTeamMembers
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch pipeline' });
