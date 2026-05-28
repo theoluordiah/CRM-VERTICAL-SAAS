@@ -162,9 +162,20 @@ const options: swaggerJsdoc.Options = {
           properties: {
             _id: { type: 'string' },
             name: { type: 'string' },
+            description: { type: 'string', nullable: true },
             parent_id: { type: 'string', nullable: true },
             owner_id: { type: 'string' },
+            last_modified_by: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                _id: { type: 'string' },
+                email: { type: 'string' },
+                display_name: { type: 'string' },
+              },
+            },
             organization_id: { type: 'string' },
+            document_count: { type: 'number' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },

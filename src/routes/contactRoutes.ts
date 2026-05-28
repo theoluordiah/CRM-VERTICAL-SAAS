@@ -12,7 +12,6 @@ import {
   getContactActivities,
   getContactDeals,
   getContactTasks,
-  getContactDocuments,
   bulkImportContacts,
   exportContacts
 } from '../controllers/contactController';
@@ -300,27 +299,6 @@ router.get('/:id/deals', getContactDeals);
  *         description: Tasks retrieved successfully
  */
 router.get('/:id/tasks', getContactTasks);
-
-/**
- * @swagger
- * /contacts/{id}/documents:
- *   get:
- *     summary: Get contact documents
- *     tags: [Contacts]
- *     security:
- *       - cookieAuth: []
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Documents retrieved successfully
- */
-router.get('/:id/documents', getContactDocuments);
 
 /**
  * @swagger

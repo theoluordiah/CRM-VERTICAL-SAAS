@@ -427,38 +427,6 @@ export const getContactTasks = async (req: AuthRequest, res: Response): Promise<
 };
 
 /**
- * Get contact documents
- * Returns all documents associated with a contact
- */
-export const getContactDocuments = async (req: AuthRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params as { id: string };
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      res.status(400).json({ status: false, message: 'Invalid contact ID' });
-      return;
-    }
-
-    const { CRMFile } = await import('../models/Document');
-
-    const organizationId = requireOrganization(req, res);
-    if (!organizationId) return;
-
-    const documents = await CRMFile.find({ contact_id: id, organization_id: organizationId })
-      .populate('owner_id', 'email display_name')
-      .sort({ created_at: -1 })
-      .lean();
-
-    res.json({ status: true, message: 'Documents retrieved successfully', data: documents });
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: 'Failed to fetch documents'
-    });
-  }
-};
-
-/**
  * Export contacts as CSV
  * Returns contacts in CSV format for spreadsheet import/export
  */

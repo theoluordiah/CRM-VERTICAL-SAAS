@@ -348,7 +348,6 @@ All contact routes require authentication.
 | GET | /contacts/:id/activities | Get activities | All roles |
 | GET | /contacts/:id/deals | Get deals | All roles |
 | GET | /contacts/:id/tasks | Get tasks | All roles |
-| GET | /contacts/:id/documents | Get documents | All roles |
 
 #### GET /contacts
 Query parameters:
@@ -760,6 +759,72 @@ Compatibility fields still accepted for older clients:
 **Errors:**
 - `400` for invalid enum values, invalid IDs, or malformed compatibility fields
 - `404` when a provided contact, company, or deal is not found in the organization
+
+---
+
+### Folders
+
+All folder routes require authentication.
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | /folders | Get all folders | All roles |
+| POST | /folders | Create a folder | admin, sales_manager, sales_rep |
+| PATCH | /folders/:folderId | Edit folder name/description | admin, sales_manager, sales_rep |
+| DELETE | /folders/:folderId | Delete folder and documents inside it | admin, sales_manager |
+| POST | /folders/:folderId/documents | Upload documents into folder | admin, sales_manager, sales_rep |
+
+Folder responses include `last_modified_by` with the last user's `_id`, `email`, and `display_name`. Creating/editing a folder, uploading documents into it, editing a document in it, or deleting a document from it updates this value.
+
+#### POST /folders
+**Request Body:**
+```json
+{
+  "name": "Contracts",
+  "description": "Client contract documents"
+}
+```
+
+#### PATCH /folders/:folderId
+**Request Body:**
+```json
+{
+  "name": "Updated Contracts",
+  "description": "Updated folder description"
+}
+```
+
+#### POST /folders/:folderId/documents
+Upload one document with `document` or multiple documents with `documents`.
+
+**Form Data:**
+```txt
+document: file
+documents: file[]
+```
+
+---
+
+### Documents
+
+All document routes require authentication.
+
+| Method | Endpoint | Description | Access |
+|--------|----------|-------------|--------|
+| GET | /documents/:documentId/download | Download a document | All roles |
+| PATCH | /documents/:documentId | Edit a document | admin, sales_manager, sales_rep |
+| DELETE | /documents/:documentId | Delete a document | admin, sales_manager, sales_rep |
+
+#### PATCH /documents/:documentId
+**Request Body:**
+```json
+{
+  "name": "Updated document name.pdf",
+  "notes": "Updated notes",
+  "tags": ["contract", "client"],
+  "folder_id": "folder_id"
+}
+```
 
 ---
 

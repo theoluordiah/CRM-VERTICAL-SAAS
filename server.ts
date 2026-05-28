@@ -20,6 +20,7 @@ import analyticsRoutes from './src/routes/analyticsRoutes';
 import reportsRoutes from './src/routes/reportsRoutes';
 import emailWriterRoutes from './src/routes/emailWriterRoutes';
 import documentRoutes from './src/routes/documentRoutes';
+import folderRoutes from './src/routes/folderRoutes';
 import emailSyncRoutes from './src/routes/emailSyncRoutes';
 import dashboardRoutes from './src/routes/dashboardRoutes';
 import { seedPipeline } from './src/seeds/pipelineSeed';
@@ -67,7 +68,8 @@ app.use('/api/v1/pipeline', pipelineRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/reports', reportsRoutes);
 app.use('/api/v1/ai', emailWriterRoutes);
-app.use('/api/v1/files', documentRoutes);
+app.use('/api/v1/folders', folderRoutes);
+app.use('/api/v1/documents', documentRoutes);
 app.use('/api/v1/email', emailSyncRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 

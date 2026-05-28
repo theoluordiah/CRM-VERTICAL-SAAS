@@ -135,10 +135,6 @@ GET    /api/v1/contacts/:id/tasks
        - Get contact's tasks
        - Response: { tasks: [...] }
 
-GET    /api/v1/contacts/:id/documents
-       - Get contact's documents
-       - Response: { documents: [...] }
-
 POST   /api/v1/contacts/bulk-import
        - Bulk import contacts
        - Body: { contacts: [...] }
@@ -413,29 +409,39 @@ CHANNELS: email, whatsapp, sms, telegram, instagram, facebook, twitter, linkedin
 11. DOCUMENTS
 ================================================================================
 
-GET    /api/v1/documents
-       - List documents
-       - Query: page, limit, contact_id, deal_id, company_id
-       - Response: { documents: [...], total, page, limit }
+GET    /api/v1/folders
+       - Get all folders
+       - Response includes last_modified_by: { _id, email, display_name }
 
-GET    /api/v1/documents/:id
-       - Get document metadata
-       - Response: Document object
+POST   /api/v1/folders
+       - Create folder
+       - Body: { name, description? }
+       - Response: Created folder
 
-POST   /api/v1/documents
-       - Upload document
-       - Body: {
-           name, mime_type, size_bytes,
-           contact_id?, deal_id?, company_id?
-         }
-       - Returns: { upload_url, document }
-       - Note: Use upload_url to upload file to storage
+PATCH  /api/v1/folders/:folderId
+       - Edit folder
+       - Body: { name?, description? }
+       - Response: Updated folder
 
-GET    /api/v1/documents/:id/download
-       - Get download URL
-       - Response: { download_url }
+DELETE /api/v1/folders/:folderId
+       - Delete folder and documents inside it
+       - Response: { success: true }
 
-DELETE /api/v1/documents/:id
+POST   /api/v1/folders/:folderId/documents
+       - Upload one or more documents into a folder
+       - Form-data: document or documents[]
+       - Response: Uploaded documents
+
+GET    /api/v1/documents/:documentId/download
+       - Download document
+       - Response: Redirect to document URL
+
+PATCH  /api/v1/documents/:documentId
+       - Edit document
+       - Body: { name?, notes?, tags?, folder_id? }
+       - Response: Updated document
+
+DELETE /api/v1/documents/:documentId
        - Delete document
        - Response: { success: true }
 
