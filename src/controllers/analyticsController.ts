@@ -273,14 +273,18 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
     ]);
 
     res.json({
+      status: true,
+      message: 'Analytics retrieved successfully',
+      data: {
       summary,
       pipeline_by_stage: pipelineByStage,
       lead_sources: leadSources,
       team_productivity: teamProductivity,
       task_summary: taskSummary
+      }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch analytics' });
+    res.status(500).json({ status: false, message: 'Failed to fetch analytics' });
   }
 };
 
@@ -288,9 +292,13 @@ export const getAnalyticsSummary = async (req: AuthRequest, res: Response): Prom
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getSummary(organizationId, parseDateRange(req)));
+    res.json({
+      status: true,
+      message: 'Analytics summary retrieved successfully',
+      data: await getSummary(organizationId, parseDateRange(req))
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch analytics summary' });
+    res.status(500).json({ status: false, message: 'Failed to fetch analytics summary' });
   }
 };
 
@@ -298,9 +306,13 @@ export const getAnalyticsPipelineByStage = async (req: AuthRequest, res: Respons
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getPipelineByStage(organizationId, parseDateRange(req)));
+    res.json({
+      status: true,
+      message: 'Pipeline analytics retrieved successfully',
+      data: await getPipelineByStage(organizationId, parseDateRange(req))
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch pipeline analytics' });
+    res.status(500).json({ status: false, message: 'Failed to fetch pipeline analytics' });
   }
 };
 
@@ -308,9 +320,13 @@ export const getAnalyticsLeadSources = async (req: AuthRequest, res: Response): 
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getLeadSources(organizationId, parseDateRange(req)));
+    res.json({
+      status: true,
+      message: 'Lead sources retrieved successfully',
+      data: await getLeadSources(organizationId, parseDateRange(req))
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch lead sources' });
+    res.status(500).json({ status: false, message: 'Failed to fetch lead sources' });
   }
 };
 
@@ -318,9 +334,13 @@ export const getAnalyticsTeamProductivity = async (req: AuthRequest, res: Respon
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getTeamProductivity(organizationId, parseDateRange(req)));
+    res.json({
+      status: true,
+      message: 'Team productivity retrieved successfully',
+      data: await getTeamProductivity(organizationId, parseDateRange(req))
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch team productivity' });
+    res.status(500).json({ status: false, message: 'Failed to fetch team productivity' });
   }
 };
 
@@ -328,8 +348,12 @@ export const getAnalyticsTaskSummary = async (req: AuthRequest, res: Response): 
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getTaskSummary(organizationId, parseDateRange(req)));
+    res.json({
+      status: true,
+      message: 'Task summary retrieved successfully',
+      data: await getTaskSummary(organizationId, parseDateRange(req))
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch task summary' });
+    res.status(500).json({ status: false, message: 'Failed to fetch task summary' });
   }
 };
