@@ -6,11 +6,59 @@ import { PipelineStage } from '../models/Pipeline';
 import { AuthRequest } from '../types';
 import { requireOrganization } from '../utils/tenant';
 
+type DateRange = {
+  from?: Date;
+  to?: Date;
+};
+
 type StageMapValue = {
   name: string;
   is_won: boolean;
   is_lost: boolean;
 };
+
+const parseDateRange = (req: AuthRequest): DateRange => {
+  const fromRaw = req.query.from as string | undefined;
+  const toRaw = req.query.to as string | undefined;
+  const from = fromRaw ? new Date(fromRaw) : undefined;
+  const to = toRaw ? new Date(toRaw) : undefined;
+
+  if (to && !Number.isNaN(to.getTime())) {
+    to.setHours(23, 59, 59, 999);
+  }
+
+  return {
+    from: from && !Number.isNaN(from.getTime()) ? from : undefined,
+    to: to && !Number.isNaN(to.getTime()) ? to : undefined
+  };
+};
+
+const dateFilter = (field: string, range: DateRange): Record<string, unknown> => {
+  const filter: Record<string, Date> = {};
+  if (range.from) filter.$gte = range.from;
+  if (range.to) filter.$lte = range.to;
+  return Object.keys(filter).length > 0 ? { [field]: filter } : {};
+};
+
+const reportSummaryRange = (range: DateRange): Required<DateRange> => {
+  const to = range.to || new Date();
+  const from = range.from || new Date(to.getTime() - 29 * 24 * 60 * 60 * 1000);
+  return { from, to };
+};
+
+const previousRange = (range: Required<DateRange>): Required<DateRange> => {
+  const duration = range.to.getTime() - range.from.getTime();
+  const previousTo = new Date(range.from.getTime() - 1);
+  const previousFrom = new Date(previousTo.getTime() - duration);
+  return { from: previousFrom, to: previousTo };
+};
+
+const compareMetric = (current: number, previous: number) => ({
+  current,
+  previous,
+  percentage_change: previous > 0 ? Math.round(((current - previous) / previous) * 100) : current > 0 ? 100 : 0,
+  direction: current >= previous ? 'up' : 'down'
+});
 
 const getStageMap = async (organizationId: mongoose.Types.ObjectId) => {
   const stages = await PipelineStage.find({ organization_id: organizationId })
@@ -30,12 +78,7 @@ const getStageMap = async (organizationId: mongoose.Types.ObjectId) => {
   );
 };
 
-const getSummary = async (organizationId: mongoose.Types.ObjectId) => {
-  const [stageMap, deals] = await Promise.all([
-    getStageMap(organizationId),
-    Deal.find({ organization_id: organizationId }).select('value stage_id').lean()
-  ]);
-
+const summarizeDeals = (deals: Array<{ value?: number; stage_id?: unknown }>, stageMap: Map<string, StageMapValue>) => {
   let openValue = 0;
   let wonValue = 0;
   let lostValue = 0;
@@ -58,6 +101,34 @@ const getSummary = async (organizationId: mongoose.Types.ObjectId) => {
     open_value: openValue,
     won_value: wonValue,
     lost_value: lostValue
+  };
+};
+
+const getSummary = async (organizationId: mongoose.Types.ObjectId, range: DateRange = {}) => {
+  const currentRange = reportSummaryRange(range);
+  const priorRange = previousRange(currentRange);
+  const [stageMap, currentDeals, previousDeals] = await Promise.all([
+    getStageMap(organizationId),
+    Deal.find({ organization_id: organizationId, ...dateFilter('created_at', currentRange) }).select('value stage_id').lean(),
+    Deal.find({ organization_id: organizationId, ...dateFilter('created_at', priorRange) }).select('value stage_id').lean()
+  ]);
+
+  const current = summarizeDeals(currentDeals, stageMap);
+  const previous = summarizeDeals(previousDeals, stageMap);
+
+  return {
+    period: {
+      from: currentRange.from,
+      to: currentRange.to
+    },
+    previous_period: {
+      from: priorRange.from,
+      to: priorRange.to
+    },
+    total_deals: compareMetric(current.total_deals, previous.total_deals),
+    open_value: compareMetric(current.open_value, previous.open_value),
+    won_value: compareMetric(current.won_value, previous.won_value),
+    lost_value: compareMetric(current.lost_value, previous.lost_value)
   };
 };
 
@@ -150,9 +221,10 @@ export const getReports = async (req: AuthRequest, res: Response): Promise<void>
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
+    const range = parseDateRange(req);
 
     const [summary, pipelineByStage, dealSourceMix, contactTemperature] = await Promise.all([
-      getSummary(organizationId),
+      getSummary(organizationId, range),
       getPipelineByStage(organizationId),
       getDealSourceMix(organizationId),
       getContactTemperature(organizationId)
@@ -173,7 +245,7 @@ export const getReportsSummary = async (req: AuthRequest, res: Response): Promis
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getSummary(organizationId));
+    res.json(await getSummary(organizationId, parseDateRange(req)));
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch reports summary' });
   }
@@ -234,12 +306,12 @@ export const exportReports = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    const summary = await getSummary(organizationId);
+    const summary = await getSummary(organizationId, parseDateRange(req));
     sendCsv(res, 'summary.csv', ['total_deals', 'open_value', 'won_value', 'lost_value'], [[
-      summary.total_deals,
-      summary.open_value,
-      summary.won_value,
-      summary.lost_value
+      summary.total_deals.current,
+      summary.open_value.current,
+      summary.won_value.current,
+      summary.lost_value.current
     ]]);
   } catch (error) {
     res.status(500).json({ message: 'Failed to export report' });
