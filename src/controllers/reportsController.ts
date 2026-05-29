@@ -231,13 +231,17 @@ export const getReports = async (req: AuthRequest, res: Response): Promise<void>
     ]);
 
     res.json({
-      summary,
-      pipeline_by_stage: pipelineByStage,
-      deal_source_mix: dealSourceMix,
-      contact_temperature: contactTemperature
+      status: true,
+      message: 'Reports retrieved successfully',
+      data: {
+        summary,
+        pipeline_by_stage: pipelineByStage,
+        deal_source_mix: dealSourceMix,
+        contact_temperature: contactTemperature
+      }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch reports' });
+    res.status(500).json({ status: false, message: 'Failed to fetch reports' });
   }
 };
 
@@ -245,9 +249,13 @@ export const getReportsSummary = async (req: AuthRequest, res: Response): Promis
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getSummary(organizationId, parseDateRange(req)));
+    res.json({
+      status: true,
+      message: 'Reports summary retrieved successfully',
+      data: await getSummary(organizationId, parseDateRange(req))
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch reports summary' });
+    res.status(500).json({ status: false, message: 'Failed to fetch reports summary' });
   }
 };
 
@@ -255,9 +263,13 @@ export const getReportsPipelineByStage = async (req: AuthRequest, res: Response)
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getPipelineByStage(organizationId));
+    res.json({
+      status: true,
+      message: 'Pipeline report retrieved successfully',
+      data: await getPipelineByStage(organizationId)
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch pipeline report' });
+    res.status(500).json({ status: false, message: 'Failed to fetch pipeline report' });
   }
 };
 
@@ -265,9 +277,13 @@ export const getReportsDealSourceMix = async (req: AuthRequest, res: Response): 
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getDealSourceMix(organizationId));
+    res.json({
+      status: true,
+      message: 'Deal source mix retrieved successfully',
+      data: await getDealSourceMix(organizationId)
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch deal source mix' });
+    res.status(500).json({ status: false, message: 'Failed to fetch deal source mix' });
   }
 };
 
@@ -275,9 +291,13 @@ export const getReportsContactTemperature = async (req: AuthRequest, res: Respon
   try {
     const organizationId = requireOrganization(req, res);
     if (!organizationId) return;
-    res.json(await getContactTemperature(organizationId));
+    res.json({
+      status: true,
+      message: 'Contact temperature retrieved successfully',
+      data: await getContactTemperature(organizationId)
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch contact temperature' });
+    res.status(500).json({ status: false, message: 'Failed to fetch contact temperature' });
   }
 };
 
@@ -314,6 +334,6 @@ export const exportReports = async (req: AuthRequest, res: Response): Promise<vo
       summary.lost_value.current
     ]]);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to export report' });
+    res.status(500).json({ status: false, message: 'Failed to export report' });
   }
 };
