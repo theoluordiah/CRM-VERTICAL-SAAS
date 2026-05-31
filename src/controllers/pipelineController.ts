@@ -197,7 +197,11 @@ export const getPipelineDeals = async (req: AuthRequest, res: Response): Promise
       .sort({ created_at: -1 })
       .lean();
 
-    res.json(deals.map(formatDeal));
+    res.json({
+      status: true,
+      message: 'Pipeline deals retrieved successfully',
+      data: deals.map(formatDeal)
+    });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch pipeline deals' });
   }
